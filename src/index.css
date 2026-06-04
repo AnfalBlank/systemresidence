@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    margin: 0;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Modest, friendly focus ring matching the ink-based brand */
+  :focus-visible {
+    outline: 2px solid theme('colors.ink');
+    outline-offset: 2px;
+  }
+
+  /* Hide scrollbars on horizontal strips while keeping scroll */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@layer components {
+  /* Primary CTA — Rausch fill */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-sm rounded-sm bg-primary px-lg text-button-md text-white
+      transition-colors duration-150 active:bg-primary-active disabled:bg-primary-disabled
+      disabled:cursor-not-allowed;
+    min-height: 48px;
+    font-weight: 500;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-sm rounded-sm border border-ink bg-canvas px-lg
+      text-button-md text-ink transition-colors duration-150 hover:bg-surface-soft;
+    min-height: 48px;
+    font-weight: 500;
+  }
+
+  .btn-tertiary {
+    @apply inline-flex items-center justify-center gap-xs text-button-md text-ink underline-offset-2 hover:underline;
+    font-weight: 500;
+  }
+
+  .btn-pill {
+    @apply inline-flex items-center justify-center gap-sm rounded-full bg-primary px-base py-md text-button-sm
+      text-white transition-colors active:bg-primary-active;
+    font-weight: 500;
+  }
+
+  /* Form field — stacked label, 8px radius, ink focus */
+  .field-input {
+    @apply w-full rounded-sm border border-hairline bg-canvas px-md text-body-md text-ink
+      placeholder:text-muted-soft focus:border-ink focus:outline-none focus:ring-0;
+    min-height: 56px;
+    border-width: 1px;
+  }
+  .field-input:focus {
+    border-width: 2px;
+  }
+
+  .field-label {
+    @apply mb-xs block text-caption text-muted;
+  }
+
+  /* Card surface */
+  .card {
+    @apply rounded-md border border-hairline bg-canvas;
+  }
+
+  .card-float {
+    @apply rounded-md bg-canvas shadow-float;
+  }
+
+  /* Status chips */
+  .chip {
+    @apply inline-flex items-center gap-xs rounded-full px-md py-xxs text-badge;
+    font-weight: 600;
+  }
+}

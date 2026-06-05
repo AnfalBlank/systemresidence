@@ -54,4 +54,41 @@ router.post(
   })
 )
 
+router.patch(
+  '/:id',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        namaAlmarhum: z.string().min(1).optional(),
+        unit: z.string().min(1).optional(),
+        lokasiRumahDuka: z.string().min(1).optional(),
+        jadwalPemakaman: z.string().min(1).optional(),
+        catatan: z.string().optional(),
+      })
+      .parse(req.body)
+    const updates: string[] = []
+    const args: (string | null)[] = []
+    if (body.namaAlmarhum !== undefined) { updates.push('nama_almarhum = ?'); args.push(body.namaAlmarhum) }
+    if (body.unit !== undefined) { updates.push('unit = ?'); args.push(body.unit) }
+    if (body.lokasiRumahDuka !== undefined) { updates.push('lokasi_rumah_duka = ?'); args.push(body.lokasiRumahDuka) }
+    if (body.jadwalPemakaman !== undefined) { updates.push('jadwal_pemakaman = ?'); args.push(body.jadwalPemakaman) }
+    if (body.catatan !== undefined) { updates.push('catatan = ?'); args.push(body.catatan || null) }
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' })
+    args.push(req.params.id)
+    await db.execute({ sql: `UPDATE obituaries SET ${updates.join(', ')} WHERE id = ?`, args })
+    const result = await db.execute({ sql: 'SELECT * FROM obituaries WHERE id = ?', args: [req.params.id] })
+    res.json(mapObituary(result.rows[0]))
+  })
+)
+
+router.delete(
+  '/:id',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    await db.execute({ sql: 'DELETE FROM obituaries WHERE id = ?', args: [req.params.id] })
+    res.json({ ok: true })
+  })
+)
+
 export default router

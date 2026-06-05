@@ -108,4 +108,46 @@ router.post(
   })
 )
 
+router.patch(
+  '/:id',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        nama: z.string().min(1).optional(),
+        tipe: z.enum(['Kerja Bakti', 'Bazar', 'Pengajian', 'Senam', 'Perlombaan']).optional(),
+        deskripsi: z.string().optional(),
+        tanggal: z.string().optional(),
+        waktu: z.string().optional(),
+        lokasi: z.string().optional(),
+        kuota: z.number().int().nonnegative().optional(),
+        foto: z.string().optional(),
+      })
+      .parse(req.body)
+    const updates: string[] = []
+    const args: (string | number | null)[] = []
+    if (body.nama !== undefined) { updates.push('nama = ?'); args.push(body.nama) }
+    if (body.tipe !== undefined) { updates.push('tipe = ?'); args.push(body.tipe) }
+    if (body.deskripsi !== undefined) { updates.push('deskripsi = ?'); args.push(body.deskripsi) }
+    if (body.tanggal !== undefined) { updates.push('tanggal = ?'); args.push(body.tanggal) }
+    if (body.waktu !== undefined) { updates.push('waktu = ?'); args.push(body.waktu) }
+    if (body.lokasi !== undefined) { updates.push('lokasi = ?'); args.push(body.lokasi) }
+    if (body.kuota !== undefined) { updates.push('kuota = ?'); args.push(body.kuota) }
+    if (body.foto !== undefined) { updates.push('foto = ?'); args.push(body.foto || null) }
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' })
+    args.push(req.params.id)
+    await db.execute({ sql: `UPDATE events SET ${updates.join(', ')} WHERE id = ?`, args })
+    res.json({ ok: true })
+  })
+)
+
+router.delete(
+  '/:id',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    await db.execute({ sql: 'DELETE FROM events WHERE id = ?', args: [req.params.id] })
+    res.json({ ok: true })
+  })
+)
+
 export default router

@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Plus, Copy, Check, RefreshCw, Search, X } from 'lucide-react'
+import { Plus, Copy, Check, RefreshCw, Search, X, Pencil, Trash2 } from 'lucide-react'
 import { useApiQuery } from '@/hooks/useApi'
 import { api, ApiError } from '@/lib/api'
+import { useApp } from '@/context/AppContext'
 import { unitToString } from '@/lib/format'
-import type { Resident, ResidentStatus, Role } from '@/types'
+import type { AccountStatus, Resident, ResidentStatus, Role } from '@/types'
 import PageHeader from '@/components/ui/PageHeader'
 import StatusChip from '@/components/ui/StatusChip'
 import Modal from '@/components/ui/Modal'
 import Avatar from '@/components/ui/Avatar'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const roles: { value: Role; label: string }[] = [
   { value: 'warga', label: 'Warga' },
@@ -17,20 +19,34 @@ const roles: { value: Role; label: string }[] = [
   { value: 'super_admin', label: 'Super Admin' },
 ]
 
+const accountStatuses: AccountStatus[] = ['Belum Aktivasi', 'Aktif', 'Nonaktif']
+
+const emptyForm = {
+  nama: '', noHp: '', email: '',
+  status: 'Pemilik' as ResidentStatus,
+  blok: '', lantai: '', nomor: '',
+  role: 'warga' as Role,
+}
+
 export default function ResidentManagement() {
+  const { user } = useApp()
   const { data, refetch } = useApiQuery<Resident[]>(() => api.get<Resident[]>('/residents'))
   const [showCreate, setShowCreate] = useState(false)
   const [createdCode, setCreatedCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [query, setQuery] = useState('')
-  const [form, setForm] = useState({
-    nama: '', noHp: '', email: '',
-    status: 'Pemilik' as ResidentStatus,
-    blok: '', lantai: '', nomor: '',
-    role: 'warga' as Role,
-  })
+  const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Resident | null>(null)
+
+  // Edit modal
+  const [editTarget, setEditTarget] = useState<Resident | null>(null)
+  const [editForm, setEditForm] = useState({
+    nama: '', noHp: '', email: '', status: 'Pemilik' as ResidentStatus,
+    role: 'warga' as Role, accountStatus: 'Aktif' as AccountStatus,
+  })
+  const [editError, setEditError] = useState('')
 
   const residents = data ?? []
   const filtered = residents.filter((r) => {
@@ -53,7 +69,7 @@ export default function ResidentManagement() {
     try {
       const created = await api.post<Resident>('/residents', form)
       setCreatedCode(created.invitationCode ?? null)
-      setForm({ nama: '', noHp: '', email: '', status: 'Pemilik', blok: '', lantai: '', nomor: '', role: 'warga' })
+      setForm(emptyForm)
       setShowCreate(false)
       await refetch()
     } catch (err) {
@@ -63,8 +79,40 @@ export default function ResidentManagement() {
     }
   }
 
+  const openEdit = (r: Resident) => {
+    setEditTarget(r)
+    setEditForm({
+      nama: r.nama, noHp: r.noHp, email: r.email ?? '',
+      status: r.status, role: r.role, accountStatus: r.accountStatus,
+    })
+    setEditError('')
+  }
+
+  const submitEdit = async () => {
+    if (!editTarget) return
+    setEditError('')
+    try {
+      await api.patch(`/residents/${editTarget.id}`, editForm)
+      setEditTarget(null)
+      await refetch()
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : 'Gagal menyimpan.')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await api.delete(`/residents/${deleteTarget.id}`)
+      setDeleteTarget(null)
+      await refetch()
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Gagal menghapus.')
+      setDeleteTarget(null)
+    }
+  }
+
   const regenerateCode = async (id: string) => {
-    if (!confirm('Generate kode undangan baru? Kode lama akan tidak berlaku.')) return
     try {
       const res = await api.post<{ invitationCode: string }>(`/residents/${id}/regenerate-code`)
       setCreatedCode(res.invitationCode)
@@ -84,9 +132,9 @@ export default function ResidentManagement() {
     <div>
       <PageHeader
         title="Manajemen Warga"
-        subtitle="Kelola data warga dan generate kode undangan"
+        subtitle="Kelola data warga, role, dan kode undangan"
         action={
-          <button onClick={() => setShowCreate(true)} className="btn-primary px-base">
+          <button onClick={() => { setForm(emptyForm); setError(''); setShowCreate(true) }} className="btn-primary px-base">
             <Plus className="h-4 w-4" /><span className="hidden sm:inline">Tambah Warga</span>
           </button>
         }
@@ -98,12 +146,14 @@ export default function ResidentManagement() {
         {query && <button onClick={() => setQuery('')}><X className="h-4 w-4 text-muted" /></button>}
       </div>
 
+      <p className="mb-sm text-caption-sm text-muted">{filtered.length} warga</p>
+
       <div className="card divide-y divide-hairline-soft">
         {filtered.map((r) => (
           <div key={r.id} className="flex items-center gap-md px-base py-md">
-            <Avatar name={r.nama} size="md" />
+            <Avatar name={r.nama} src={r.foto} size="md" />
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-sm">
+              <div className="flex flex-wrap items-center gap-sm">
                 <p className="truncate text-title-sm text-ink">{r.nama}</p>
                 <span className="rounded-full bg-surface-soft px-md py-xxs text-badge font-semibold text-ink">
                   {roles.find((x) => x.value === r.role)?.label ?? r.role}
@@ -115,19 +165,31 @@ export default function ResidentManagement() {
               {r.invitationCode && r.accountStatus !== 'Aktif' && (
                 <div className="mt-xxs flex items-center gap-xs">
                   <code className="rounded-sm bg-surface-soft px-xs py-xxs text-caption-sm font-semibold text-ink">{r.invitationCode}</code>
-                  <button onClick={() => copyCode(r.invitationCode!)} className="text-caption-sm text-primary">
+                  <button onClick={() => copyCode(r.invitationCode!)} className="text-caption-sm text-primary" aria-label="Salin kode">
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
-                  <button onClick={() => regenerateCode(r.id)} className="text-caption-sm text-muted hover:text-ink" aria-label="Generate ulang">
+                  <button onClick={() => regenerateCode(r.id)} className="text-caption-sm text-muted hover:text-ink" aria-label="Generate ulang kode">
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
                 </div>
               )}
             </div>
-            <StatusChip
-              label={r.accountStatus}
-              tone={r.accountStatus === 'Aktif' ? 'success' : r.accountStatus === 'Belum Aktivasi' ? 'warning' : 'neutral'}
-            />
+            <div className="flex flex-col items-end gap-sm">
+              <StatusChip
+                label={r.accountStatus}
+                tone={r.accountStatus === 'Aktif' ? 'success' : r.accountStatus === 'Belum Aktivasi' ? 'warning' : 'neutral'}
+              />
+              <div className="flex gap-xs">
+                <button onClick={() => openEdit(r)} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-soft" aria-label="Edit warga">
+                  <Pencil className="h-4 w-4 text-muted" />
+                </button>
+                {r.id !== user?.id && (
+                  <button onClick={() => setDeleteTarget(r)} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-soft" aria-label="Hapus warga">
+                    <Trash2 className="h-4 w-4 text-muted" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         ))}
         {filtered.length === 0 && (
@@ -172,7 +234,7 @@ export default function ResidentManagement() {
             </div>
           </div>
           <div>
-            <label className="field-label">Status</label>
+            <label className="field-label">Status Penghuni</label>
             <div className="grid grid-cols-3 gap-sm">
               {(['Pemilik', 'Penyewa', 'Keluarga'] as ResidentStatus[]).map((s) => (
                 <button key={s} type="button" onClick={() => setForm({ ...form, status: s })} className={`rounded-sm border px-md py-md text-button-sm font-medium transition-colors ${form.status === s ? 'border-ink bg-ink text-white' : 'border-hairline text-ink'}`}>
@@ -191,20 +253,65 @@ export default function ResidentManagement() {
         </form>
       </Modal>
 
-      {/* Show generated code modal */}
+      {/* Edit resident modal */}
       <Modal
-        open={!!createdCode}
-        onClose={() => setCreatedCode(null)}
-        title="Kode Undangan"
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        title="Edit Warga"
+        footer={<button onClick={submitEdit} className="btn-primary w-full">Simpan Perubahan</button>}
       >
+        {editTarget && (
+          <div className="space-y-base">
+            <div className="rounded-md bg-surface-soft p-base">
+              <p className="text-caption-sm text-muted">Unit (tidak dapat diubah)</p>
+              <p className="text-title-sm text-ink">{unitToString(editTarget.unit)}</p>
+            </div>
+            <div>
+              <label className="field-label">Nama Lengkap</label>
+              <input value={editForm.nama} onChange={(e) => setEditForm({ ...editForm, nama: e.target.value })} className="field-input" />
+            </div>
+            <div>
+              <label className="field-label">Nomor HP</label>
+              <input value={editForm.noHp} onChange={(e) => setEditForm({ ...editForm, noHp: e.target.value })} className="field-input" />
+            </div>
+            <div>
+              <label className="field-label">Email</label>
+              <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="field-input" />
+            </div>
+            <div>
+              <label className="field-label">Status Penghuni</label>
+              <div className="grid grid-cols-3 gap-sm">
+                {(['Pemilik', 'Penyewa', 'Keluarga'] as ResidentStatus[]).map((s) => (
+                  <button key={s} type="button" onClick={() => setEditForm({ ...editForm, status: s })} className={`rounded-sm border px-md py-md text-button-sm font-medium transition-colors ${editForm.status === s ? 'border-ink bg-ink text-white' : 'border-hairline text-ink'}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="field-label">Role</label>
+              <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value as Role })} className="field-input">
+                {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="field-label">Status Akun</label>
+              <select value={editForm.accountStatus} onChange={(e) => setEditForm({ ...editForm, accountStatus: e.target.value as AccountStatus })} className="field-input">
+                {accountStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            {editError && <p className="text-body-sm text-primary-error">{editError}</p>}
+          </div>
+        )}
+      </Modal>
+
+      {/* Show generated code modal */}
+      <Modal open={!!createdCode} onClose={() => setCreatedCode(null)} title="Kode Undangan">
         {createdCode && (
           <div className="text-center">
             <p className="text-body-sm text-muted">Kode undangan berhasil dibuat.</p>
             <p className="mt-base text-display-md tracking-wider text-ink">{createdCode}</p>
-            <button
-              onClick={() => copyCode(createdCode)}
-              className="btn-secondary mt-base"
-            >
+            <button onClick={() => copyCode(createdCode)} className="btn-secondary mt-base">
               {copied ? <><Check className="h-4 w-4" /> Tersalin</> : <><Copy className="h-4 w-4" /> Salin Kode</>}
             </button>
             <p className="mt-base text-caption-sm text-muted">
@@ -213,6 +320,14 @@ export default function ResidentManagement() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Hapus Warga?"
+        message={deleteTarget ? `Data warga "${deleteTarget.nama}" (${unitToString(deleteTarget.unit)}) beserta seluruh aktivitasnya akan dihapus permanen.` : ''}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

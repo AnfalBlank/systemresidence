@@ -7,6 +7,8 @@ import {
   HandCoins,
   Check,
   Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { useApiQuery } from '@/hooks/useApi'
 import { api, ApiError } from '@/lib/api'
@@ -16,9 +18,14 @@ import type { Campaign, CampaignType } from '@/types'
 import PageHeader from '@/components/ui/PageHeader'
 import Modal from '@/components/ui/Modal'
 import QRDisplay from '@/components/ui/QRDisplay'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const quickAmounts = [10000, 25000, 50000, 100000]
 const campaignTypes: CampaignType[] = ['Renovasi', 'Bantuan Sosial', 'Perbaikan Fasilitas']
+
+const emptyForm = {
+  judul: '', tipe: 'Renovasi' as CampaignType, deskripsi: '', foto: '', target: 0, berakhir: '',
+}
 
 export default function Crowdfunding() {
   const { user } = useApp()
@@ -30,14 +37,21 @@ export default function Crowdfunding() {
   const [step, setStep] = useState<'form' | 'payment' | 'done'>('form')
   const [error, setError] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState({
-    judul: '', tipe: 'Renovasi' as CampaignType, deskripsi: '', foto: '', target: 0, berakhir: '',
-  })
+  const [editId, setEditId] = useState<string | null>(null)
+  const [createForm, setCreateForm] = useState(emptyForm)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const campaigns = data ?? []
 
   const openDonate = (c: Campaign) => {
     setSelected(c); setAmount(0); setMethod('transfer'); setStep('form'); setError('')
+  }
+
+  const openCreate = () => { setEditId(null); setCreateForm(emptyForm); setCreateOpen(true) }
+  const openEdit = (c: Campaign) => {
+    setEditId(c.id)
+    setCreateForm({ judul: c.judul, tipe: c.tipe, deskripsi: c.deskripsi, foto: c.foto, target: c.target, berakhir: c.berakhir })
+    setCreateOpen(true)
   }
 
   const confirmDonate = async () => {
@@ -55,13 +69,25 @@ export default function Crowdfunding() {
   const submitCreate = async () => {
     if (!createForm.judul.trim() || createForm.target <= 0 || !createForm.berakhir) return
     try {
-      await api.post('/crowdfunding', createForm)
-      setCreateForm({ judul: '', tipe: 'Renovasi', deskripsi: '', foto: '', target: 0, berakhir: '' })
+      if (editId) {
+        await api.patch(`/crowdfunding/${editId}`, createForm)
+      } else {
+        await api.post('/crowdfunding', createForm)
+      }
+      setCreateForm(emptyForm)
+      setEditId(null)
       setCreateOpen(false)
       await refetch()
     } catch (err) {
       console.error(err)
     }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteId) return
+    await api.delete(`/crowdfunding/${deleteId}`)
+    setDeleteId(null)
+    await refetch()
   }
 
   return (
@@ -71,7 +97,7 @@ export default function Crowdfunding() {
         subtitle="Galang dana untuk kebaikan bersama"
         action={
           canManage ? (
-            <button onClick={() => setCreateOpen(true)} className="btn-primary px-base">
+            <button onClick={openCreate} className="btn-primary px-base">
               <Plus className="h-4 w-4" /><span className="hidden sm:inline">Buat Campaign</span>
             </button>
           ) : undefined
@@ -106,6 +132,16 @@ export default function Crowdfunding() {
                 <button onClick={() => openDonate(c)} className="btn-primary mt-base w-full">
                   <HandCoins className="h-4 w-4" /> Donasi
                 </button>
+                {canManage && (
+                  <div className="mt-sm flex gap-xs border-t border-hairline-soft pt-sm">
+                    <button onClick={() => openEdit(c)} className="flex flex-1 items-center justify-center gap-xxs rounded-sm py-xs text-caption-sm text-muted hover:bg-surface-soft hover:text-ink">
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button onClick={() => setDeleteId(c.id)} className="flex flex-1 items-center justify-center gap-xxs rounded-sm py-xs text-caption-sm text-muted hover:bg-surface-soft hover:text-primary-error">
+                      <Trash2 className="h-3.5 w-3.5" /> Hapus
+                    </button>
+                  </div>
+                )}
               </div>
             </article>
           )
@@ -194,12 +230,12 @@ export default function Crowdfunding() {
         )}
       </Modal>
 
-      {/* Create campaign modal */}
+      {/* Create / edit campaign modal */}
       <Modal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="Buat Campaign"
-        footer={<button onClick={submitCreate} className="btn-primary w-full">Publikasikan</button>}
+        title={editId ? 'Edit Campaign' : 'Buat Campaign'}
+        footer={<button onClick={submitCreate} className="btn-primary w-full">{editId ? 'Simpan Perubahan' : 'Publikasikan'}</button>}
       >
         <div className="space-y-base">
           <div>
@@ -236,6 +272,14 @@ export default function Crowdfunding() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Hapus Campaign?"
+        message="Campaign beserta riwayat donasinya akan dihapus permanen."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   )
 }

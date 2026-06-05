@@ -6,6 +6,8 @@ import {
   Clock,
   Check,
   Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import { useApiQuery } from '@/hooks/useApi'
 import { api, ApiError } from '@/lib/api'
@@ -15,21 +17,37 @@ import type { CommunityEvent, EventType } from '@/types'
 import PageHeader from '@/components/ui/PageHeader'
 import Modal from '@/components/ui/Modal'
 import QRDisplay from '@/components/ui/QRDisplay'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const eventTypes: EventType[] = ['Kerja Bakti', 'Bazar', 'Pengajian', 'Senam', 'Perlombaan']
+
+const emptyForm = {
+  nama: '', tipe: 'Kerja Bakti' as EventType, deskripsi: '', tanggal: '', waktu: '', lokasi: '', kuota: 50, foto: '',
+}
 
 export default function Events() {
   const { user } = useApp()
   const canManage = user && ['super_admin', 'pengelola'].includes(user.role)
   const { data, refetch } = useApiQuery<CommunityEvent[]>(() => api.get<CommunityEvent[]>('/events'))
   const [qrEvent, setQrEvent] = useState<CommunityEvent | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [form, setForm] = useState({
-    nama: '', tipe: 'Kerja Bakti' as EventType, deskripsi: '', tanggal: '', waktu: '', lokasi: '', kuota: 50, foto: '',
-  })
+  const [open, setOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const events = data ?? []
+
+  const openCreate = () => { setEditId(null); setForm(emptyForm); setError(''); setOpen(true) }
+  const openEdit = (e: CommunityEvent) => {
+    setEditId(e.id)
+    setForm({
+      nama: e.nama, tipe: e.tipe, deskripsi: e.deskripsi, tanggal: e.tanggal,
+      waktu: e.waktu, lokasi: e.lokasi, kuota: e.kuota, foto: e.foto ?? '',
+    })
+    setError('')
+    setOpen(true)
+  }
 
   const toggleRsvp = async (id: string) => {
     try {
@@ -40,17 +58,33 @@ export default function Events() {
     }
   }
 
-  const submitCreate = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (!form.nama.trim() || !form.tanggal || !form.waktu.trim() || !form.lokasi.trim()) {
+      setError('Nama, tanggal, waktu, dan lokasi wajib diisi.')
+      return
+    }
     try {
-      await api.post('/events', form)
-      setForm({ nama: '', tipe: 'Kerja Bakti', deskripsi: '', tanggal: '', waktu: '', lokasi: '', kuota: 50, foto: '' })
-      setCreateOpen(false)
+      if (editId) {
+        await api.patch(`/events/${editId}`, form)
+      } else {
+        await api.post('/events', form)
+      }
+      setForm(emptyForm)
+      setEditId(null)
+      setOpen(false)
       await refetch()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Gagal membuat event.')
+      setError(err instanceof ApiError ? err.message : 'Gagal menyimpan event.')
     }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteId) return
+    await api.delete(`/events/${deleteId}`)
+    setDeleteId(null)
+    await refetch()
   }
 
   return (
@@ -60,7 +94,7 @@ export default function Events() {
         subtitle="Kegiatan dan acara warga KSTP Cakung"
         action={
           canManage ? (
-            <button onClick={() => setCreateOpen(true)} className="btn-primary px-base">
+            <button onClick={openCreate} className="btn-primary px-base">
               <Plus className="h-4 w-4" /><span className="hidden sm:inline">Buat Event</span>
             </button>
           ) : undefined
@@ -109,10 +143,24 @@ export default function Events() {
                     </button>
                   )}
                 </div>
+
+                {canManage && (
+                  <div className="mt-sm flex gap-xs border-t border-hairline-soft pt-sm">
+                    <button onClick={() => openEdit(e)} className="flex flex-1 items-center justify-center gap-xxs rounded-sm py-xs text-caption-sm text-muted hover:bg-surface-soft hover:text-ink">
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button onClick={() => setDeleteId(e.id)} className="flex flex-1 items-center justify-center gap-xxs rounded-sm py-xs text-caption-sm text-muted hover:bg-surface-soft hover:text-primary-error">
+                      <Trash2 className="h-3.5 w-3.5" /> Hapus
+                    </button>
+                  </div>
+                )}
               </div>
             </article>
           )
         })}
+        {events.length === 0 && (
+          <p className="py-section text-center text-body-md text-muted desktop:col-span-3">Belum ada event.</p>
+        )}
       </div>
 
       <Modal open={!!qrEvent} onClose={() => setQrEvent(null)} title="QR Absensi">
@@ -124,21 +172,18 @@ export default function Events() {
               label={qrEvent.nama}
               sublabel={`${formatDate(qrEvent.tanggal)} · ${qrEvent.waktu}`}
             />
-            <p className="text-body-sm text-muted">
-              Tunjukkan QR ini kepada panitia untuk absensi kehadiran.
-            </p>
+            <p className="text-body-sm text-muted">Tunjukkan QR ini kepada panitia untuk absensi kehadiran.</p>
           </div>
         )}
       </Modal>
 
-      {/* Create event modal */}
       <Modal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        title="Buat Event Baru"
-        footer={<button onClick={submitCreate} className="btn-primary w-full">Publikasikan Event</button>}
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editId ? 'Edit Event' : 'Buat Event Baru'}
+        footer={<button onClick={submit} className="btn-primary w-full">{editId ? 'Simpan Perubahan' : 'Publikasikan Event'}</button>}
       >
-        <form onSubmit={submitCreate} className="space-y-base">
+        <form onSubmit={submit} className="space-y-base">
           <div>
             <label className="field-label">Nama Event</label>
             <input value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} className="field-input" />
@@ -182,6 +227,14 @@ export default function Events() {
           {error && <p className="text-body-sm text-primary-error">{error}</p>}
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Hapus Event?"
+        message="Event ini beserta data RSVP-nya akan dihapus permanen."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   )
 }

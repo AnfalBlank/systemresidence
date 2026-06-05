@@ -106,4 +106,14 @@ router.patch(
   })
 )
 
+router.delete(
+  '/:id',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    // ballots & options cascade via FK ON DELETE CASCADE
+    await db.execute({ sql: 'DELETE FROM votings WHERE id = ?', args: [req.params.id] })
+    res.json({ ok: true })
+  })
+)
+
 export default router

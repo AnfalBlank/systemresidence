@@ -182,4 +182,14 @@ router.post(
   })
 )
 
+// Delete a due (admin/keuangan — e.g. wrong bill)
+router.delete(
+  '/:id',
+  requireRole('super_admin', 'pengelola', 'petugas_keuangan'),
+  asyncHandler(async (req, res) => {
+    await db.execute({ sql: 'DELETE FROM dues WHERE id = ?', args: [req.params.id] })
+    res.json({ ok: true })
+  })
+)
+
 export default router

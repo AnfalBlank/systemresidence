@@ -91,4 +91,42 @@ router.post(
   })
 )
 
+router.patch(
+  '/:id',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        judul: z.string().min(1).optional(),
+        tipe: z.enum(['Renovasi', 'Bantuan Sosial', 'Perbaikan Fasilitas']).optional(),
+        deskripsi: z.string().optional(),
+        foto: z.string().optional(),
+        target: z.number().positive().optional(),
+        berakhir: z.string().optional(),
+      })
+      .parse(req.body)
+    const updates: string[] = []
+    const args: (string | number | null)[] = []
+    if (body.judul !== undefined) { updates.push('judul = ?'); args.push(body.judul) }
+    if (body.tipe !== undefined) { updates.push('tipe = ?'); args.push(body.tipe) }
+    if (body.deskripsi !== undefined) { updates.push('deskripsi = ?'); args.push(body.deskripsi) }
+    if (body.foto !== undefined) { updates.push('foto = ?'); args.push(body.foto || null) }
+    if (body.target !== undefined) { updates.push('target = ?'); args.push(body.target) }
+    if (body.berakhir !== undefined) { updates.push('berakhir = ?'); args.push(body.berakhir) }
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' })
+    args.push(req.params.id)
+    await db.execute({ sql: `UPDATE campaigns SET ${updates.join(', ')} WHERE id = ?`, args })
+    res.json({ ok: true })
+  })
+)
+
+router.delete(
+  '/:id',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    await db.execute({ sql: 'DELETE FROM campaigns WHERE id = ?', args: [req.params.id] })
+    res.json({ ok: true })
+  })
+)
+
 export default router

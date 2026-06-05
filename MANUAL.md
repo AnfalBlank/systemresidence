@@ -208,27 +208,41 @@ Lihat data diri, tampilkan **Kartu Warga Digital** (QR), edit profil, ubah passw
 ### 7.1 Manajemen Warga (`/warga`)
 - **Tambah Warga:** isi nama, no HP, unit (blok/lantai/nomor), status, role →
   sistem otomatis membuat kode undangan.
+- **Edit Warga:** ubah nama, no HP, email, status penghuni, **role**, dan
+  **status akun** (Aktif/Nonaktif) lewat ikon pensil.
+- **Hapus Warga:** ikon tempat sampah (tidak bisa menghapus akun sendiri).
 - **Salin / Generate ulang** kode undangan.
 - Cari warga berdasarkan nama, unit, atau kode.
 
+> Semua modul yang dikelola pengelola/admin kini mendukung CRUD penuh
+> (Create, Read, Update, Delete): Pengumuman, Berita Duka, Event, Crowdfunding,
+> E-Voting, Fasilitas, dan Warga. Setiap kartu memiliki tombol **Edit** dan
+> **Hapus**, dengan dialog konfirmasi sebelum penghapusan.
+
 ### 7.2 Pengumuman
-Tombol **Buat** → pilih kategori (Umum/Penting/Darurat), judul, isi.
+Tombol **Buat** → pilih kategori (Umum/Penting/Darurat), judul, isi. Setiap
+pengumuman dapat di-**Edit** atau **Hapus**.
 
 ### 7.3 Berita Duka
-Tombol **Tambah** → isi nama almarhum, unit, lokasi, jadwal pemakaman.
+Tombol **Tambah** → isi nama almarhum, unit, lokasi, jadwal pemakaman. Dapat
+di-**Edit** atau **Hapus**.
 
 ### 7.4 Event
-Tombol **Buat Event** → nama, tipe, tanggal, waktu, lokasi, kuota, foto.
+Tombol **Buat Event** → nama, tipe, tanggal, waktu, lokasi, kuota, foto. Setiap
+event dapat di-**Edit** atau **Hapus** (beserta data RSVP-nya).
 
 ### 7.5 Booking Fasilitas
-- **Kelola Fasilitas:** di tab Fasilitas, tombol **Tambah Fasilitas** / hapus.
-- **Approve/Reject** pengajuan booking di tab Booking.
+- **Kelola Fasilitas:** di tab Fasilitas, tombol **Tambah Fasilitas** dan ikon
+  hapus pada tiap kartu fasilitas.
+- **Approve/Reject** pengajuan booking di tab Booking, dan tandai **Selesai**.
 
 ### 7.6 E-Voting
 Tombol **Buat Voting** → judul, tipe, tanggal berakhir, dan minimal 2 pilihan.
+Voting dapat **Ditutup** (status jadi Selesai) atau **Dihapus**.
 
 ### 7.7 Crowdfunding
 Tombol **Buat Campaign** → judul, tipe, target dana, tanggal berakhir, foto.
+Campaign dapat di-**Edit** atau **Hapus**.
 
 ### 7.8 Broadcast Center (`/broadcast`)
 Kirim pengumuman tersegmentasi: Seluruh Warga / Blok / Lantai / Unit / Kelompok.

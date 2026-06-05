@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Calendar, Home, Plus } from 'lucide-react'
+import { MapPin, Calendar, Home, Plus, Pencil, Trash2 } from 'lucide-react'
 import { useApiQuery } from '@/hooks/useApi'
 import { api, ApiError } from '@/lib/api'
 import { useApp } from '@/context/AppContext'
@@ -7,24 +7,34 @@ import { formatDate } from '@/lib/format'
 import type { Obituary } from '@/types'
 import PageHeader from '@/components/ui/PageHeader'
 import Modal from '@/components/ui/Modal'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+
+const emptyForm = {
+  namaAlmarhum: '', unit: '', lokasiRumahDuka: '', jadwalPemakaman: '', catatan: '',
+}
 
 export default function Obituaries() {
   const { user } = useApp()
   const canManage = user && ['super_admin', 'pengelola'].includes(user.role)
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({
-    namaAlmarhum: '',
-    unit: '',
-    lokasiRumahDuka: '',
-    jadwalPemakaman: '',
-    catatan: '',
-  })
+  const [editId, setEditId] = useState<string | null>(null)
+  const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
-  const { data, refetch } = useApiQuery<Obituary[]>(() =>
-    api.get<Obituary[]>('/obituaries')
-  )
+  const { data, refetch } = useApiQuery<Obituary[]>(() => api.get<Obituary[]>('/obituaries'))
+
+  const openCreate = () => { setEditId(null); setForm(emptyForm); setError(''); setOpen(true) }
+  const openEdit = (o: Obituary) => {
+    setEditId(o.id)
+    setForm({
+      namaAlmarhum: o.namaAlmarhum, unit: o.unit, lokasiRumahDuka: o.lokasiRumahDuka,
+      jadwalPemakaman: o.jadwalPemakaman, catatan: o.catatan ?? '',
+    })
+    setError('')
+    setOpen(true)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,8 +45,13 @@ export default function Obituaries() {
     }
     setSubmitting(true)
     try {
-      await api.post('/obituaries', form)
-      setForm({ namaAlmarhum: '', unit: '', lokasiRumahDuka: '', jadwalPemakaman: '', catatan: '' })
+      if (editId) {
+        await api.patch(`/obituaries/${editId}`, form)
+      } else {
+        await api.post('/obituaries', form)
+      }
+      setForm(emptyForm)
+      setEditId(null)
       setOpen(false)
       await refetch()
     } catch (err) {
@@ -46,6 +61,13 @@ export default function Obituaries() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!deleteId) return
+    await api.delete(`/obituaries/${deleteId}`)
+    setDeleteId(null)
+    await refetch()
+  }
+
   return (
     <div>
       <PageHeader
@@ -53,7 +75,7 @@ export default function Obituaries() {
         subtitle="Innalillahi wa inna ilaihi raji'un"
         action={
           canManage ? (
-            <button onClick={() => setOpen(true)} className="btn-primary px-base">
+            <button onClick={openCreate} className="btn-primary px-base">
               <Plus className="h-4 w-4" /><span className="hidden sm:inline">Tambah</span>
             </button>
           ) : undefined
@@ -72,30 +94,36 @@ export default function Obituaries() {
               <DetailRow icon={MapPin} label="Lokasi Rumah Duka" value={o.lokasiRumahDuka} />
               <DetailRow icon={Calendar} label="Jadwal Pemakaman" value={o.jadwalPemakaman} />
               {o.catatan && (
-                <p className="rounded-sm bg-surface-soft p-md text-body-sm italic text-body">
-                  {o.catatan}
-                </p>
+                <p className="rounded-sm bg-surface-soft p-md text-body-sm italic text-body">{o.catatan}</p>
               )}
-              <p className="text-right text-caption-sm text-muted">
-                Diumumkan {formatDate(o.tanggal)}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-caption-sm text-muted">Diumumkan {formatDate(o.tanggal)}</p>
+                {canManage && (
+                  <div className="flex gap-xs">
+                    <button onClick={() => openEdit(o)} className="flex items-center gap-xxs rounded-sm px-sm py-xs text-caption-sm text-muted hover:bg-surface-soft hover:text-ink">
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button onClick={() => setDeleteId(o.id)} className="flex items-center gap-xxs rounded-sm px-sm py-xs text-caption-sm text-muted hover:bg-surface-soft hover:text-primary-error">
+                      <Trash2 className="h-3.5 w-3.5" /> Hapus
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </article>
         ))}
         {(data ?? []).length === 0 && (
-          <p className="py-section text-center text-body-md text-muted">
-            Belum ada berita duka.
-          </p>
+          <p className="py-section text-center text-body-md text-muted">Belum ada berita duka.</p>
         )}
       </div>
 
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Tambah Berita Duka"
+        title={editId ? 'Edit Berita Duka' : 'Tambah Berita Duka'}
         footer={
           <button onClick={handleSubmit} disabled={submitting} className="btn-primary w-full">
-            {submitting ? 'Menyimpan…' : 'Publikasikan'}
+            {submitting ? 'Menyimpan…' : editId ? 'Simpan Perubahan' : 'Publikasikan'}
           </button>
         }
       >
@@ -123,6 +151,14 @@ export default function Obituaries() {
           {error && <p className="text-body-sm text-primary-error">{error}</p>}
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Hapus Berita Duka?"
+        message="Data berita duka ini akan dihapus permanen."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   )
 }

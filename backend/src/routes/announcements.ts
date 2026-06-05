@@ -46,6 +46,31 @@ router.post(
   })
 )
 
+router.patch(
+  '/:id',
+  requireAuth,
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        judul: z.string().min(1).optional(),
+        isi: z.string().min(1).optional(),
+        kategori: z.enum(['Umum', 'Penting', 'Darurat']).optional(),
+      })
+      .parse(req.body)
+    const updates: string[] = []
+    const args: string[] = []
+    if (body.judul !== undefined) { updates.push('judul = ?'); args.push(body.judul) }
+    if (body.isi !== undefined) { updates.push('isi = ?'); args.push(body.isi) }
+    if (body.kategori !== undefined) { updates.push('kategori = ?'); args.push(body.kategori) }
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' })
+    args.push(req.params.id)
+    await db.execute({ sql: `UPDATE announcements SET ${updates.join(', ')} WHERE id = ?`, args })
+    const result = await db.execute({ sql: 'SELECT * FROM announcements WHERE id = ?', args: [req.params.id] })
+    res.json(mapAnnouncement(result.rows[0]))
+  })
+)
+
 router.delete(
   '/:id',
   requireAuth,
@@ -60,3 +85,4 @@ router.delete(
 )
 
 export default router
+

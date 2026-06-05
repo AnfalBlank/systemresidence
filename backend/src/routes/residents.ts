@@ -157,4 +157,17 @@ router.patch(
   })
 )
 
+// DELETE /residents/:id — remove a resident (admin only, cannot delete self)
+router.delete(
+  '/:id',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    if (req.params.id === req.user!.id) {
+      return res.status(400).json({ error: 'Tidak dapat menghapus akun sendiri.' })
+    }
+    await db.execute({ sql: 'DELETE FROM residents WHERE id = ?', args: [req.params.id] })
+    res.json({ ok: true })
+  })
+)
+
 export default router

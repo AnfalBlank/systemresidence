@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Vote as VoteIcon, Check, Clock, Info, Plus, X } from 'lucide-react'
+import { Vote as VoteIcon, Check, Clock, Info, Plus, X, Trash2, Lock } from 'lucide-react'
 import { useApiQuery } from '@/hooks/useApi'
 import { api, ApiError } from '@/lib/api'
 import { useApp } from '@/context/AppContext'
@@ -8,6 +8,7 @@ import type { Voting as VotingItem, VoteType } from '@/types'
 import PageHeader from '@/components/ui/PageHeader'
 import StatusChip from '@/components/ui/StatusChip'
 import Modal from '@/components/ui/Modal'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const voteTypes: VoteType[] = ['Pemilihan Ketua', 'Musyawarah', 'Persetujuan Program']
 
@@ -22,10 +23,23 @@ export default function Voting() {
   const [createForm, setCreateForm] = useState({
     judul: '', tipe: 'Musyawarah' as VoteType, deskripsi: '', berakhir: '', opsi: ['', ''],
   })
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const votings = data ?? []
 
   const openVote = (v: VotingItem) => { setActive(v); setChoice(null); setError('') }
+
+  const closeVoting = async (id: string) => {
+    await api.patch(`/voting/${id}/close`)
+    await refetch()
+  }
+
+  const handleDelete = async () => {
+    if (!deleteId) return
+    await api.delete(`/voting/${deleteId}`)
+    setDeleteId(null)
+    await refetch()
+  }
 
   const submitVote = async () => {
     if (!active || !choice) return
@@ -128,6 +142,19 @@ export default function Voting() {
                 <button onClick={() => openVote(v)} className="btn-primary mt-base w-full">
                   <VoteIcon className="h-4 w-4" /> Beri Suara
                 </button>
+              )}
+
+              {canManage && (
+                <div className="mt-sm flex gap-xs border-t border-hairline-soft pt-sm">
+                  {v.status === 'Berlangsung' && (
+                    <button onClick={() => closeVoting(v.id)} className="flex flex-1 items-center justify-center gap-xxs rounded-sm py-xs text-caption-sm text-muted hover:bg-surface-soft hover:text-ink">
+                      <Lock className="h-3.5 w-3.5" /> Tutup Voting
+                    </button>
+                  )}
+                  <button onClick={() => setDeleteId(v.id)} className="flex flex-1 items-center justify-center gap-xxs rounded-sm py-xs text-caption-sm text-muted hover:bg-surface-soft hover:text-primary-error">
+                    <Trash2 className="h-3.5 w-3.5" /> Hapus
+                  </button>
+                </div>
               )}
             </article>
           )
@@ -242,6 +269,14 @@ export default function Voting() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Hapus Voting?"
+        message="Voting beserta seluruh suara yang masuk akan dihapus permanen."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   )
 }

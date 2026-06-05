@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapPanicAlert } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notifyMany } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -27,6 +28,20 @@ router.post(
       sql: 'INSERT INTO panic_alerts (id, resident_id, jenis) VALUES (?,?,?)',
       args: [id, req.user!.id, jenis],
     })
+    // Notify all keamanan officers + super admin
+    const officers = await db.execute(
+      "SELECT id FROM residents WHERE role IN ('petugas_keamanan','super_admin','pengelola') AND account_status = 'Aktif'"
+    )
+    await notifyMany(
+      officers.rows.map((r) => String(r.id)),
+      {
+        type: 'panic',
+        title: `DARURAT: ${jenis}`,
+        message: `${req.user!.nama} (${req.user!.blok}-${req.user!.lantai}-${req.user!.nomor_unit}) memerlukan bantuan`,
+        link: '/keamanan',
+        entityId: id,
+      }
+    )
     res.status(201).json({ id, jenis, status: 'Aktif' })
   })
 )

@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapCampaign } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notifyMany, resolveTargetUsers } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -50,6 +51,14 @@ router.post(
         body.target,
         body.berakhir,
       ],
+    })
+    const userIds = await resolveTargetUsers('Seluruh Warga')
+    await notifyMany(userIds, {
+      type: 'campaign',
+      title: `Campaign Baru: ${body.judul}`,
+      message: `${body.tipe} · Target Rp${body.target.toLocaleString('id-ID')}`,
+      link: '/crowdfunding',
+      entityId: id,
     })
     res.status(201).json({ id })
   })

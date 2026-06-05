@@ -353,3 +353,26 @@ CREATE TABLE IF NOT EXISTS broadcasts (
   target_value TEXT,                 -- e.g. 'A' | '03' | 'B-04-12' | 'PKK' | null
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
+
+-- ----- Notifications (per-user inbox) -----
+CREATE TABLE IF NOT EXISTS notifications (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES residents(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,                -- announcement | obituary | event | dues_new | dues_verified | dues_rejected | panic | booking_approved | booking_rejected | complaint_update | broadcast | campaign | visitor_status | chat_private | chat_group
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  link TEXT,                         -- frontend route, e.g. /pengumuman, /chat?peer=X
+  entity_id TEXT,                    -- related entity id
+  read_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, read_at);
+
+-- ----- Chat read receipts (track unread counts per conversation) -----
+CREATE TABLE IF NOT EXISTS chat_reads (
+  user_id TEXT NOT NULL REFERENCES residents(id) ON DELETE CASCADE,
+  conversation_key TEXT NOT NULL,    -- 'g:<group_id>' for groups or 'p:<peer_id>' for private
+  last_read_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (user_id, conversation_key)
+);

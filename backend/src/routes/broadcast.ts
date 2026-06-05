@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapBroadcast } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notifyMany, resolveTargetUsers } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -46,6 +47,15 @@ router.post(
     const result = await db.execute({
       sql: 'SELECT * FROM broadcasts WHERE id = ?',
       args: [id],
+    })
+    // Resolve target users and notify
+    const userIds = await resolveTargetUsers(body.targetType, body.targetValue)
+    await notifyMany(userIds, {
+      type: 'broadcast',
+      title: body.judul,
+      message: body.pesan,
+      link: '/pengumuman',
+      entityId: id,
     })
     res.status(201).json(mapBroadcast(result.rows[0]))
   })

@@ -23,6 +23,7 @@ import skillRouter from './routes/skill.js'
 import umkmRouter from './routes/umkm.js'
 import broadcastRouter from './routes/broadcast.js'
 import dashboardRouter from './routes/dashboard.js'
+import notificationsRouter from './routes/notifications.js'
 
 const app = express()
 
@@ -52,6 +53,7 @@ app.use('/api/skill', skillRouter)
 app.use('/api/umkm', umkmRouter)
 app.use('/api/broadcast', broadcastRouter)
 app.use('/api/dashboard', dashboardRouter)
+app.use('/api/notifications', notificationsRouter)
 
 app.use(errorHandler)
 

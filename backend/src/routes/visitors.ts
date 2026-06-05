@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapVisitor } from '../utils/mappers.js'
 import { generatePIN, newId } from '../utils/id.js'
+import { notify } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -75,6 +76,21 @@ router.patch(
       sql: `UPDATE visitors SET ${updates.join(', ')} WHERE id = ?`,
       args,
     })
+    // Notify host
+    const host = await db.execute({
+      sql: 'SELECT host_id, nama FROM visitors WHERE id = ?',
+      args: [req.params.id],
+    })
+    if (host.rows[0]) {
+      await notify({
+        userId: String(host.rows[0].host_id),
+        type: 'visitor_status',
+        title: status === 'Di Dalam' ? 'Tamu Anda Telah Masuk' : status === 'Selesai' ? 'Tamu Telah Pulang' : 'Status Tamu Diperbarui',
+        message: `${host.rows[0].nama}: ${status}`,
+        link: '/tamu',
+        entityId: req.params.id,
+      })
+    }
     res.json({ ok: true })
   })
 )

@@ -201,6 +201,29 @@ di gerbang.
 ### 6.15 Profil & Kartu Warga Digital
 Lihat data diri, tampilkan **Kartu Warga Digital** (QR), edit profil, ubah password.
 
+### 6.16 Notifikasi
+Ikon **lonceng** di atas (kanan) menampilkan jumlah notifikasi yang belum
+dibaca. Setiap notifikasi terkait kejadian yang relevan untuk Anda:
+
+- **Pengumuman** dan **Berita Duka** baru — semua warga
+- **Tagihan iuran baru**, **pembayaran diverifikasi**, atau **ditolak** — warga terkait
+- **Event baru**, **voting baru**, **campaign baru** — semua warga
+- **Pengajuan booking baru** — pengelola; **booking disetujui/ditolak** — pemilik booking
+- **Panic alert** — petugas keamanan
+- **Pengaduan baru** — pengelola/keamanan; **status pengaduan diperbarui** — pelapor
+- **Status tamu** (masuk/pulang) — pemilik unit yang mengundang
+- **Broadcast** — sesuai segmen target
+
+Klik notifikasi → otomatis diarahkan ke halaman terkait dan ditandai dibaca.
+
+### 6.17 Chat Unread
+Jumlah pesan yang belum dibaca tampil di:
+- **Bottom tab bar** (badge merah di ikon Chat) di mobile
+- **Sidebar** (badge di item Chat) di desktop
+- **Setiap baris percakapan** di halaman Chat (badge di samping pesan terakhir)
+
+Hitungan otomatis nol setelah Anda membuka percakapan tersebut.
+
 ---
 
 ## 7. Panduan Pengelola / Super Admin

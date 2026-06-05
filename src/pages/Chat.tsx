@@ -12,6 +12,7 @@ import {
 import { useApiQuery } from '@/hooks/useApi'
 import { api } from '@/lib/api'
 import { getIcon } from '@/lib/icons'
+import { useNotifications } from '@/context/NotificationContext'
 import type { ChatGroup, ChatMessage, PrivateChat } from '@/types'
 import Avatar from '@/components/ui/Avatar'
 
@@ -26,7 +27,8 @@ interface ActiveConversation {
 
 export default function Chat() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data: groups } = useApiQuery<ChatGroup[]>(() => api.get<ChatGroup[]>('/chat/groups'))
+  const { refresh: refreshNotifs } = useNotifications()
+  const { data: groups, refetch: refetchGroups } = useApiQuery<ChatGroup[]>(() => api.get<ChatGroup[]>('/chat/groups'))
   const { data: privateChats, refetch: refetchPrivate } = useApiQuery<PrivateChat[]>(
     () => api.get<PrivateChat[]>('/chat/private')
   )
@@ -70,8 +72,13 @@ export default function Chat() {
       if (!cancelled) setMessages(data)
     }
     loadMessages()
+    // After opening, refresh sidebar/notif badges
+    refreshNotifs()
+    refetchGroups()
+    refetchPrivate()
     const interval = setInterval(loadMessages, 3000)
     return () => { cancelled = true; clearInterval(interval) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
 
   // Auto-scroll to bottom on new messages
@@ -111,7 +118,7 @@ export default function Chat() {
     return (
       <div className="fixed inset-0 z-40 flex flex-col bg-canvas desktop:static desktop:z-auto desktop:h-[calc(100vh-10rem)] desktop:rounded-md desktop:border desktop:border-hairline">
         <div className="flex items-center gap-md border-b border-hairline px-base py-md">
-          <button onClick={() => setActive(null)} aria-label="Kembali" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-soft">
+          <button onClick={() => { setActive(null); refetchGroups(); refetchPrivate(); refreshNotifs() }} aria-label="Kembali" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-soft">
             <ArrowLeft className="h-5 w-5 text-ink" />
           </button>
           {active.isGroup ? (
@@ -253,10 +260,17 @@ export default function Chat() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-sm">
-                  <p className="truncate text-title-sm text-ink">{c.nama}</p>
-                  <span className="shrink-0 text-caption-sm text-muted">{c.lastTime}</span>
+                  <p className={`truncate text-title-sm ${c.unread > 0 ? 'font-semibold text-ink' : 'text-ink'}`}>{c.nama}</p>
+                  <span className={`shrink-0 text-caption-sm ${c.unread > 0 ? 'font-semibold text-primary' : 'text-muted'}`}>{c.lastTime}</span>
                 </div>
-                <p className="truncate text-body-sm text-muted">{c.lastMessage}</p>
+                <div className="flex items-center justify-between gap-sm">
+                  <p className={`truncate text-body-sm ${c.unread > 0 ? 'font-medium text-ink' : 'text-muted'}`}>{c.lastMessage}</p>
+                  {c.unread > 0 && (
+                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-xs text-badge font-semibold text-white">
+                      {c.unread > 99 ? '99+' : c.unread}
+                    </span>
+                  )}
+                </div>
               </div>
             </button>
           ))}
@@ -276,7 +290,7 @@ export default function Chat() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-sm">
-                    <p className="truncate text-title-sm text-ink">
+                    <p className={`truncate text-title-sm ${g.unread > 0 ? 'font-semibold text-ink' : 'text-ink'}`}>
                       {g.nama}
                       {g.isMain && (
                         <span className="ml-xs rounded-full bg-primary-disabled px-xs py-xxs text-uppercase-tag uppercase text-primary-error">
@@ -284,9 +298,16 @@ export default function Chat() {
                         </span>
                       )}
                     </p>
-                    <span className="shrink-0 text-caption-sm text-muted">{g.lastTime}</span>
+                    <span className={`shrink-0 text-caption-sm ${g.unread > 0 ? 'font-semibold text-primary' : 'text-muted'}`}>{g.lastTime}</span>
                   </div>
-                  <p className="truncate text-body-sm text-muted">{g.lastMessage}</p>
+                  <div className="flex items-center justify-between gap-sm">
+                    <p className={`truncate text-body-sm ${g.unread > 0 ? 'font-medium text-ink' : 'text-muted'}`}>{g.lastMessage}</p>
+                    {g.unread > 0 && (
+                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-xs text-badge font-semibold text-white">
+                        {g.unread > 99 ? '99+' : g.unread}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </button>
             )

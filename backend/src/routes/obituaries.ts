@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapObituary } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notifyMany, resolveTargetUsers } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -49,6 +50,14 @@ router.post(
     const result = await db.execute({
       sql: 'SELECT * FROM obituaries WHERE id = ?',
       args: [id],
+    })
+    const userIds = await resolveTargetUsers('Seluruh Warga')
+    await notifyMany(userIds, {
+      type: 'obituary',
+      title: 'Berita Duka',
+      message: `Telah berpulang: ${body.namaAlmarhum} (${body.unit})`,
+      link: '/berita-duka',
+      entityId: id,
     })
     res.status(201).json(mapObituary(result.rows[0]))
   })

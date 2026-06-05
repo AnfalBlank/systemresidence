@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapAnnouncement } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notifyMany, resolveTargetUsers } from '../utils/notify.js'
 
 const router = Router()
 
@@ -41,6 +42,15 @@ router.post(
     const result = await db.execute({
       sql: 'SELECT * FROM announcements WHERE id = ?',
       args: [id],
+    })
+    // Notify all active warga
+    const userIds = await resolveTargetUsers('Seluruh Warga')
+    await notifyMany(userIds, {
+      type: 'announcement',
+      title: `Pengumuman ${body.kategori}`,
+      message: body.judul,
+      link: '/pengumuman',
+      entityId: id,
     })
     res.status(201).json(mapAnnouncement(result.rows[0]))
   })

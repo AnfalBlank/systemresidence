@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapBooking, mapFacility } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notify, notifyMany } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -93,6 +94,21 @@ router.post(
       sql: 'INSERT INTO bookings (id, facility_id, resident_id, tanggal, waktu, keperluan) VALUES (?,?,?,?,?,?)',
       args: [id, body.facilityId, req.user!.id, body.tanggal, body.waktu, body.keperluan],
     })
+    // Notify pengelola
+    const fac = await db.execute({ sql: 'SELECT nama FROM facilities WHERE id = ?', args: [body.facilityId] })
+    const officers = await db.execute(
+      "SELECT id FROM residents WHERE role IN ('pengelola','super_admin') AND account_status = 'Aktif'"
+    )
+    await notifyMany(
+      officers.rows.map((r) => String(r.id)),
+      {
+        type: 'complaint_update',
+        title: 'Pengajuan Booking Baru',
+        message: `${req.user!.nama} mengajukan booking ${fac.rows[0]?.nama ?? 'fasilitas'} pada ${body.tanggal}`,
+        link: '/booking',
+        entityId: id,
+      }
+    )
     res.status(201).json({ id, status: 'Pending' })
   })
 )
@@ -104,10 +120,26 @@ router.patch(
     const { status } = z
       .object({ status: z.enum(['Pending', 'Approved', 'Rejected', 'Finished']) })
       .parse(req.body)
+    const before = await db.execute({
+      sql: `SELECT b.resident_id, f.nama as fac_nama, b.tanggal, b.waktu
+            FROM bookings b JOIN facilities f ON f.id = b.facility_id WHERE b.id = ?`,
+      args: [req.params.id],
+    })
     await db.execute({
       sql: 'UPDATE bookings SET status = ? WHERE id = ?',
       args: [status, req.params.id],
     })
+    const row = before.rows[0]
+    if (row && (status === 'Approved' || status === 'Rejected')) {
+      await notify({
+        userId: String(row.resident_id),
+        type: status === 'Approved' ? 'booking_approved' : 'booking_rejected',
+        title: status === 'Approved' ? 'Booking Disetujui' : 'Booking Ditolak',
+        message: `${row.fac_nama} pada ${row.tanggal} ${row.waktu}`,
+        link: '/booking',
+        entityId: req.params.id,
+      })
+    }
     res.json({ ok: true })
   })
 )

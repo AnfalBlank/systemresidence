@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapDues } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notify, notifyMany } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -69,6 +70,21 @@ router.post(
       sql: 'SELECT * FROM dues WHERE id = ?',
       args: [req.params.id],
     })
+    // Notify all petugas keuangan + super admin
+    const officers = await db.execute(
+      "SELECT id FROM residents WHERE role IN ('petugas_keuangan','super_admin') AND account_status = 'Aktif'"
+    )
+    const dues = after.rows[0]
+    await notifyMany(
+      officers.rows.map((r) => String(r.id)),
+      {
+        type: 'dues_new',
+        title: 'Pembayaran Iuran Menunggu Verifikasi',
+        message: `${req.user!.nama} membayar ${dues.jenis} ${dues.periode}`,
+        link: '/verifikasi',
+        entityId: req.params.id,
+      }
+    )
     res.json(mapDues(after.rows[0]))
   })
 )
@@ -107,6 +123,14 @@ router.post(
       sql: 'SELECT * FROM dues WHERE id = ?',
       args: [req.params.id],
     })
+    await notify({
+      userId: String(row.resident_id),
+      type: 'dues_verified',
+      title: 'Pembayaran Diverifikasi',
+      message: `Iuran ${row.jenis} ${row.periode} telah dikonfirmasi Lunas.`,
+      link: '/iuran',
+      entityId: req.params.id,
+    })
     res.json(mapDues(after.rows[0]))
   })
 )
@@ -116,10 +140,24 @@ router.post(
   '/:id/reject',
   requireRole('super_admin', 'petugas_keuangan'),
   asyncHandler(async (req, res) => {
+    const before = await db.execute({
+      sql: 'SELECT resident_id, jenis, periode FROM dues WHERE id = ?',
+      args: [req.params.id],
+    })
     await db.execute({
       sql: `UPDATE dues SET status = 'Belum Bayar', paid_at = NULL WHERE id = ?`,
       args: [req.params.id],
     })
+    if (before.rows[0]) {
+      await notify({
+        userId: String(before.rows[0].resident_id),
+        type: 'dues_rejected',
+        title: 'Pembayaran Ditolak',
+        message: `Iuran ${before.rows[0].jenis} ${before.rows[0].periode} ditolak. Silakan bayar ulang.`,
+        link: '/iuran',
+        entityId: req.params.id,
+      })
+    }
     res.json({ ok: true })
   })
 )
@@ -142,6 +180,14 @@ router.post(
     await db.execute({
       sql: 'INSERT INTO dues (id, resident_id, jenis, periode, jumlah, jatuh_tempo) VALUES (?,?,?,?,?,?)',
       args: [id, body.residentId, body.jenis, body.periode, body.jumlah, body.jatuhTempo],
+    })
+    await notify({
+      userId: body.residentId,
+      type: 'dues_new',
+      title: 'Tagihan Iuran Baru',
+      message: `${body.jenis} ${body.periode} sebesar Rp${body.jumlah.toLocaleString('id-ID')}`,
+      link: '/iuran',
+      entityId: id,
     })
     res.status(201).json({ id })
   })
@@ -175,6 +221,13 @@ router.post(
       await db.execute({
         sql: 'INSERT INTO dues (id, resident_id, jenis, periode, jumlah, jatuh_tempo) VALUES (?,?,?,?,?,?)',
         args: [newId('d'), String(r.id), body.jenis, body.periode, body.jumlah, body.jatuhTempo],
+      })
+      await notify({
+        userId: String(r.id),
+        type: 'dues_new',
+        title: 'Tagihan Iuran Baru',
+        message: `${body.jenis} ${body.periode} sebesar Rp${body.jumlah.toLocaleString('id-ID')}`,
+        link: '/iuran',
       })
       created++
     }

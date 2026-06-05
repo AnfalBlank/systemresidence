@@ -13,24 +13,50 @@ import { newId } from '../utils/id.js'
 const router = Router()
 router.use(requireAuth)
 
-// List groups (with last message + member count)
+// Helper: ensure chat_reads row exists, then update last_read_at to now
+async function markRead(userId: string, key: string) {
+  await db.execute({
+    sql: `INSERT INTO chat_reads (user_id, conversation_key, last_read_at)
+          VALUES (?, ?, unixepoch())
+          ON CONFLICT(user_id, conversation_key) DO UPDATE SET last_read_at = unixepoch()`,
+    args: [userId, key],
+  })
+}
+
+// List groups (with last message, member count, AND unread count for current user)
 router.get(
   '/groups',
-  asyncHandler(async (_req, res) => {
-    const result = await db.execute(`
-      SELECT
-        g.*,
-        (SELECT COUNT(*) FROM chat_group_members WHERE group_id = g.id) as anggota,
-        (SELECT isi FROM chat_messages WHERE group_id = g.id ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM chat_messages WHERE group_id = g.id ORDER BY created_at DESC LIMIT 1) as last_time
-      FROM chat_groups g
-      ORDER BY g.is_main DESC, g.nama ASC
-    `)
-    res.json(result.rows.map(mapChatGroup))
+  asyncHandler(async (req, res) => {
+    const me = req.user!.id
+    const result = await db.execute({
+      sql: `
+        SELECT
+          g.*,
+          (SELECT COUNT(*) FROM chat_group_members WHERE group_id = g.id) as anggota,
+          (SELECT isi FROM chat_messages WHERE group_id = g.id ORDER BY created_at DESC LIMIT 1) as last_message,
+          (SELECT created_at FROM chat_messages WHERE group_id = g.id ORDER BY created_at DESC LIMIT 1) as last_time,
+          (
+            SELECT COUNT(*) FROM chat_messages cm
+            WHERE cm.group_id = g.id
+              AND cm.sender_id != ?
+              AND cm.created_at > COALESCE(
+                (SELECT last_read_at FROM chat_reads WHERE user_id = ? AND conversation_key = 'g:' || g.id),
+                0
+              )
+          ) as unread
+        FROM chat_groups g
+        ORDER BY g.is_main DESC, g.nama ASC
+      `,
+      args: [me, me],
+    })
+    res.json(result.rows.map((row) => ({
+      ...mapChatGroup(row),
+      unread: Number(row.unread ?? 0),
+    })))
   })
 )
 
-// List private chats (one row per peer)
+// List private chats (one row per peer, with unread count)
 router.get(
   '/private',
   asyncHandler(async (req, res) => {
@@ -44,7 +70,15 @@ router.get(
             SELECT isi FROM chat_messages
             WHERE (sender_id = me.id AND recipient_id = peer.id) OR (sender_id = peer.id AND recipient_id = me.id)
             ORDER BY created_at DESC LIMIT 1
-          ) as last_message
+          ) as last_message,
+          (
+            SELECT COUNT(*) FROM chat_messages cm
+            WHERE cm.sender_id = peer.id AND cm.recipient_id = me.id
+              AND cm.created_at > COALESCE(
+                (SELECT last_read_at FROM chat_reads WHERE user_id = me.id AND conversation_key = 'p:' || peer.id),
+                0
+              )
+          ) as unread
         FROM chat_messages m
         JOIN residents me ON me.id = ?
         JOIN residents peer ON peer.id = CASE WHEN m.sender_id = me.id THEN m.recipient_id ELSE m.sender_id END
@@ -54,11 +88,49 @@ router.get(
       `,
       args: [me],
     })
-    res.json(result.rows.map(mapPrivateChat))
+    res.json(result.rows.map((row) => ({
+      ...mapPrivateChat(row),
+      unread: Number(row.unread ?? 0),
+    })))
   })
 )
 
-// Group messages
+// Total unread count (groups + private), for the bell/header badge
+router.get(
+  '/unread-summary',
+  asyncHandler(async (req, res) => {
+    const me = req.user!.id
+    const groupsResult = await db.execute({
+      sql: `SELECT COALESCE(SUM(c), 0) as total FROM (
+        SELECT (
+          SELECT COUNT(*) FROM chat_messages cm
+          WHERE cm.group_id = g.id AND cm.sender_id != ?
+            AND cm.created_at > COALESCE(
+              (SELECT last_read_at FROM chat_reads WHERE user_id = ? AND conversation_key = 'g:' || g.id),
+              0
+            )
+        ) as c FROM chat_groups g
+      )`,
+      args: [me, me],
+    })
+    const privateResult = await db.execute({
+      sql: `SELECT COUNT(*) as c FROM chat_messages cm
+            WHERE cm.recipient_id = ?
+              AND cm.created_at > COALESCE(
+                (SELECT last_read_at FROM chat_reads WHERE user_id = ? AND conversation_key = 'p:' || cm.sender_id),
+                0
+              )`,
+      args: [me, me],
+    })
+    res.json({
+      groups: Number(groupsResult.rows[0]?.total ?? 0),
+      private: Number(privateResult.rows[0]?.c ?? 0),
+      total: Number(groupsResult.rows[0]?.total ?? 0) + Number(privateResult.rows[0]?.c ?? 0),
+    })
+  })
+)
+
+// Group messages — also marks the group as read
 router.get(
   '/groups/:id/messages',
   asyncHandler(async (req, res) => {
@@ -73,6 +145,7 @@ router.get(
       `,
       args: [req.params.id],
     })
+    await markRead(req.user!.id, `g:${req.params.id}`)
     res.json(result.rows.map((row) => mapMessage(row, req.user!.id)))
   })
 )
@@ -86,11 +159,13 @@ router.post(
       sql: 'INSERT INTO chat_messages (id, group_id, sender_id, isi) VALUES (?,?,?,?)',
       args: [id, req.params.id, req.user!.id, isi],
     })
+    // Mark sender's own group as read up to this message
+    await markRead(req.user!.id, `g:${req.params.id}`)
     res.status(201).json({ id })
   })
 )
 
-// Private messages between current user and peer
+// Private messages — also marks conversation as read
 router.get(
   '/private/:peerId/messages',
   asyncHandler(async (req, res) => {
@@ -107,6 +182,7 @@ router.get(
       `,
       args: [me, peer, peer, me],
     })
+    await markRead(me, `p:${peer}`)
     res.json(result.rows.map((row) => mapMessage(row, me)))
   })
 )
@@ -120,7 +196,26 @@ router.post(
       sql: 'INSERT INTO chat_messages (id, sender_id, recipient_id, isi) VALUES (?,?,?,?)',
       args: [id, req.user!.id, req.params.peerId, isi],
     })
+    // Mark sender's own conversation as read
+    await markRead(req.user!.id, `p:${req.params.peerId}`)
     res.status(201).json({ id })
+  })
+)
+
+// Explicitly mark a conversation as read (called when opening chat view)
+router.post(
+  '/groups/:id/read',
+  asyncHandler(async (req, res) => {
+    await markRead(req.user!.id, `g:${req.params.id}`)
+    res.json({ ok: true })
+  })
+)
+
+router.post(
+  '/private/:peerId/read',
+  asyncHandler(async (req, res) => {
+    await markRead(req.user!.id, `p:${req.params.peerId}`)
+    res.json({ ok: true })
   })
 )
 

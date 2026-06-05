@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapComplaint } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notify, notifyMany } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -62,6 +63,20 @@ router.post(
       sql: `${selectComplaintSql} WHERE c.id = ?`,
       args: [id],
     })
+    // Notify pengelola/admin/keamanan
+    const officers = await db.execute(
+      "SELECT id FROM residents WHERE role IN ('pengelola','super_admin','petugas_keamanan') AND account_status = 'Aktif'"
+    )
+    await notifyMany(
+      officers.rows.map((r) => String(r.id)),
+      {
+        type: 'complaint_update',
+        title: `Pengaduan Baru: ${body.kategori}`,
+        message: `${req.user!.nama}: ${body.judul}`,
+        link: '/pengaduan',
+        entityId: id,
+      }
+    )
     res.status(201).json(mapComplaint(result.rows[0]))
   })
 )
@@ -73,10 +88,24 @@ router.patch(
     const { status } = z
       .object({ status: z.enum(['Baru', 'Diproses', 'Selesai']) })
       .parse(req.body)
+    const before = await db.execute({
+      sql: 'SELECT resident_id, judul FROM complaints WHERE id = ?',
+      args: [req.params.id],
+    })
     await db.execute({
       sql: 'UPDATE complaints SET status = ? WHERE id = ?',
       args: [status, req.params.id],
     })
+    if (before.rows[0]) {
+      await notify({
+        userId: String(before.rows[0].resident_id),
+        type: 'complaint_update',
+        title: `Status Pengaduan: ${status}`,
+        message: String(before.rows[0].judul),
+        link: '/pengaduan',
+        entityId: req.params.id,
+      })
+    }
     res.json({ ok: true })
   })
 )

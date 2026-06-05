@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { navSections } from '@/config/nav'
 import { useApp } from '@/context/AppContext'
+import { useNotifications } from '@/context/NotificationContext'
 import Logo from '@/components/layout/Logo'
 import type { Role } from '@/types'
 
@@ -39,6 +40,7 @@ const roleAllowList: Record<Role, string[]> = {
 
 export default function Sidebar() {
   const { user } = useApp()
+  const { chatUnread } = useNotifications()
   const allowed = user ? roleAllowList[user.role] : roleAllowList.warga
 
   return (
@@ -61,31 +63,39 @@ export default function Sidebar() {
                 {section.title}
               </p>
               <ul className="space-y-xxs">
-                {visibleItems.map((item) => (
-                  <li key={item.to}>
-                    <NavLink
-                      to={item.to}
-                      end={item.to === '/'}
-                      className={({ isActive }) =>
-                        `flex items-center gap-md rounded-sm px-md py-sm text-title-sm transition-colors ${
-                          isActive
-                            ? 'bg-surface-soft text-ink'
-                            : 'text-body hover:bg-surface-soft'
-                        }`
-                      }
-                    >
-                      {({ isActive }) => (
-                        <>
-                          <item.icon
-                            className="h-5 w-5 shrink-0"
-                            strokeWidth={isActive ? 2.4 : 1.8}
-                          />
-                          <span className="truncate">{item.label}</span>
-                        </>
-                      )}
-                    </NavLink>
-                  </li>
-                ))}
+                {visibleItems.map((item) => {
+                  const badge = item.to === '/chat' && chatUnread.total > 0 ? chatUnread.total : 0
+                  return (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        end={item.to === '/'}
+                        className={({ isActive }) =>
+                          `flex items-center gap-md rounded-sm px-md py-sm text-title-sm transition-colors ${
+                            isActive
+                              ? 'bg-surface-soft text-ink'
+                              : 'text-body hover:bg-surface-soft'
+                          }`
+                        }
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <item.icon
+                              className="h-5 w-5 shrink-0"
+                              strokeWidth={isActive ? 2.4 : 1.8}
+                            />
+                            <span className="flex-1 truncate">{item.label}</span>
+                            {badge > 0 && (
+                              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-xs text-badge font-semibold text-white">
+                                {badge > 99 ? '99+' : badge}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </NavLink>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           )

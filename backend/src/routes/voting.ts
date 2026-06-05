@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapVoting, mapVotingOption } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notifyMany, resolveTargetUsers } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -69,6 +70,14 @@ router.post(
         args: [newId('vo'), id, label],
       })
     }
+    const userIds = await resolveTargetUsers('Seluruh Warga')
+    await notifyMany(userIds, {
+      type: 'event',
+      title: `Voting Baru: ${body.judul}`,
+      message: `${body.tipe} · Berakhir ${body.berakhir}`,
+      link: '/voting',
+      entityId: id,
+    })
     res.status(201).json({ id })
   })
 )

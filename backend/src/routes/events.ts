@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapEvent } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
+import { notifyMany, resolveTargetUsers } from '../utils/notify.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -57,6 +58,14 @@ router.post(
         body.kuota,
         body.foto ?? null,
       ],
+    })
+    const userIds = await resolveTargetUsers('Seluruh Warga')
+    await notifyMany(userIds, {
+      type: 'event',
+      title: `Event Baru: ${body.nama}`,
+      message: `${body.tipe} · ${body.tanggal} ${body.waktu} · ${body.lokasi}`,
+      link: '/event',
+      entityId: id,
     })
     res.status(201).json({ id })
   })

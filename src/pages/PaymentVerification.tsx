@@ -71,6 +71,26 @@ export default function PaymentVerification() {
     }
   }
 
+  const generateFromSettings = async () => {
+    setGenError('')
+    setGenResult('')
+    if (!genForm.periode.trim() || !genForm.jatuhTempo) {
+      setGenError('Isi Periode dan Tanggal acuan terlebih dahulu.')
+      return
+    }
+    try {
+      const res = await api.post<{ summary: { jenis: string; created: number }[]; residents: number }>(
+        '/dues/generate-from-settings',
+        { periode: genForm.periode, dueDate: genForm.jatuhTempo }
+      )
+      const lines = res.summary.map((s) => `${s.jenis}: ${s.created}`).join(', ')
+      setGenResult(`Tagihan dibuat untuk ${res.residents} warga aktif — ${lines}.`)
+      await refetch()
+    } catch (err) {
+      setGenError(err instanceof ApiError ? err.message : 'Gagal generate dari pengaturan.')
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -150,39 +170,58 @@ export default function PaymentVerification() {
         open={showGenerate}
         onClose={() => { setShowGenerate(false); setGenResult(''); setGenError('') }}
         title="Generate Iuran Massal"
-        footer={<button onClick={generateBulk} className="btn-primary w-full">Generate untuk Semua Warga</button>}
+        footer={
+          <div className="flex flex-col gap-sm">
+            <button onClick={generateFromSettings} className="btn-primary w-full">
+              Generate Semua Iuran Aktif (dari Pengaturan)
+            </button>
+            <button onClick={generateBulk} className="btn-secondary w-full">
+              Generate Satu Jenis (manual di bawah)
+            </button>
+          </div>
+        }
       >
         <div className="space-y-base">
-          <p className="rounded-md bg-surface-soft p-base text-body-sm text-muted">
-            Membuat tagihan iuran untuk semua warga aktif sekaligus. Warga yang
-            sudah punya tagihan jenis & periode yang sama akan dilewati.
+          <p className="rounded-md bg-info-soft p-base text-body-sm text-body">
+            <strong>Generate dari Pengaturan</strong> membuat tagihan untuk SEMUA
+            jenis iuran yang aktif sekaligus, memakai nominal & tanggal jatuh
+            tempo yang sudah dikonfigurasi. Cukup isi Periode + Tanggal acuan.
+            Atur nominal di menu <strong>Pengaturan → Iuran</strong>.
           </p>
-          <div>
-            <label className="field-label">Jenis Iuran</label>
-            <div className="grid grid-cols-2 gap-sm">
-              {duesTypes.map((t) => (
-                <button key={t} type="button" onClick={() => setGenForm({ ...genForm, jenis: t })} className={`rounded-sm border px-md py-md text-button-sm font-medium transition-colors ${genForm.jenis === t ? 'border-ink bg-ink text-white' : 'border-hairline text-ink'}`}>
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
           <div>
             <label className="field-label">Periode</label>
             <input value={genForm.periode} onChange={(e) => setGenForm({ ...genForm, periode: e.target.value })} className="field-input" placeholder="Contoh: Juli 2026" />
           </div>
-          <div className="grid grid-cols-2 gap-base">
-            <div>
-              <label className="field-label">Jumlah (Rp)</label>
-              <input type="number" value={genForm.jumlah || ''} onChange={(e) => setGenForm({ ...genForm, jumlah: Number(e.target.value) })} className="field-input" />
-            </div>
-            <div>
-              <label className="field-label">Jatuh Tempo</label>
-              <input type="date" value={genForm.jatuhTempo} onChange={(e) => setGenForm({ ...genForm, jatuhTempo: e.target.value })} className="field-input" />
-            </div>
+          <div>
+            <label className="field-label">Tanggal Acuan (bulan & tahun)</label>
+            <input type="date" value={genForm.jatuhTempo} onChange={(e) => setGenForm({ ...genForm, jatuhTempo: e.target.value })} className="field-input" />
+            <p className="mt-xxs text-caption-sm text-muted">
+              Tanggal hari akan mengikuti pengaturan jatuh tempo tiap iuran.
+            </p>
           </div>
+
           {genResult && <p className="rounded-sm bg-success-soft p-md text-body-sm text-success">{genResult}</p>}
           {genError && <p className="text-body-sm text-primary-error">{genError}</p>}
+
+          <details className="rounded-md border border-hairline-soft p-base">
+            <summary className="cursor-pointer text-title-sm text-ink">Generate manual satu jenis</summary>
+            <div className="mt-base space-y-base">
+              <div>
+                <label className="field-label">Jenis Iuran</label>
+                <div className="grid grid-cols-2 gap-sm">
+                  {duesTypes.map((t) => (
+                    <button key={t} type="button" onClick={() => setGenForm({ ...genForm, jenis: t })} className={`rounded-sm border px-md py-md text-button-sm font-medium transition-colors ${genForm.jenis === t ? 'border-ink bg-ink text-white' : 'border-hairline text-ink'}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="field-label">Jumlah (Rp)</label>
+                <input type="number" value={genForm.jumlah || ''} onChange={(e) => setGenForm({ ...genForm, jumlah: Number(e.target.value) })} className="field-input" />
+              </div>
+            </div>
+          </details>
         </div>
       </Modal>
     </div>

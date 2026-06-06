@@ -378,3 +378,27 @@ CREATE TABLE IF NOT EXISTS chat_reads (
   last_read_at INTEGER NOT NULL DEFAULT (unixepoch()),
   PRIMARY KEY (user_id, conversation_key)
 );
+
+-- ----- Dues settings (konfigurasi iuran per jenis) -----
+CREATE TABLE IF NOT EXISTS dues_settings (
+  jenis TEXT PRIMARY KEY,            -- IPL | Kebersihan | Keamanan | Dana Sosial
+  enabled INTEGER NOT NULL DEFAULT 1,
+  default_amount INTEGER NOT NULL DEFAULT 0,
+  due_day INTEGER NOT NULL DEFAULT 10,   -- tanggal jatuh tempo tiap bulan (1-28)
+  deskripsi TEXT,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- ----- App settings (key-value: payment config, dll.) -----
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- ----- Expense categories (kategori penggunaan kas) -----
+CREATE TABLE IF NOT EXISTS expense_categories (
+  id TEXT PRIMARY KEY,
+  nama TEXT NOT NULL UNIQUE,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);

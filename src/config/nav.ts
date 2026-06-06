@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   UserCog,
   ReceiptText,
+  Settings as SettingsIcon,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -91,6 +92,7 @@ export const navSections: NavSection[] = [
     items: [
       { to: '/warga', label: 'Manajemen Warga', icon: UserCog },
       { to: '/verifikasi', label: 'Verifikasi Pembayaran', icon: ReceiptText },
+      { to: '/pengaturan', label: 'Pengaturan', icon: SettingsIcon },
     ],
   },
 ]

@@ -66,7 +66,46 @@ async function migrate() {
     console.error('  ! username indexes:', err)
   }
 
-  console.log(`✓ Applied ${statements.length} statements + idempotent column checks.`)
+  // Seed default dues settings if not present
+  const duesDefaults = [
+    { jenis: 'IPL', enabled: 1, amount: 150000, due: 10, desc: 'Iuran Pemeliharaan Lingkungan' },
+    { jenis: 'Kebersihan', enabled: 1, amount: 50000, due: 10, desc: 'Iuran kebersihan & pengangkutan sampah' },
+    { jenis: 'Keamanan', enabled: 1, amount: 75000, due: 10, desc: 'Iuran keamanan & ronda' },
+    { jenis: 'Dana Sosial', enabled: 1, amount: 25000, due: 10, desc: 'Dana sosial & kegiatan warga' },
+  ]
+  for (const d of duesDefaults) {
+    await db.execute({
+      sql: `INSERT INTO dues_settings (jenis, enabled, default_amount, due_day, deskripsi)
+            VALUES (?,?,?,?,?) ON CONFLICT(jenis) DO NOTHING`,
+      args: [d.jenis, d.enabled, d.amount, d.due, d.desc],
+    })
+  }
+
+  // Seed default payment settings if not present
+  const paymentDefaults: Record<string, string> = {
+    bank_name: 'Bank BCA',
+    bank_account_number: '1234567890',
+    bank_account_holder: 'Kas KSTP Cakung',
+    qris_image_url: '',
+    payment_note: 'Transfer sesuai nominal lalu konfirmasi melalui aplikasi.',
+  }
+  for (const [key, value] of Object.entries(paymentDefaults)) {
+    await db.execute({
+      sql: `INSERT INTO app_settings (key, value) VALUES (?,?) ON CONFLICT(key) DO NOTHING`,
+      args: [key, value],
+    })
+  }
+
+  // Seed default expense categories
+  const expenseCats = ['Operasional', 'Kebersihan', 'Keamanan', 'Utilitas', 'Perbaikan', 'Kegiatan', 'Lainnya']
+  for (const nama of expenseCats) {
+    await db.execute({
+      sql: `INSERT INTO expense_categories (id, nama) VALUES (?,?) ON CONFLICT(nama) DO NOTHING`,
+      args: [`ec-${nama.toLowerCase()}`, nama],
+    })
+  }
+
+  console.log(`✓ Applied ${statements.length} statements + idempotent column checks + defaults.`)
 }
 
 migrate()

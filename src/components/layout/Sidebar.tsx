@@ -20,10 +20,10 @@ const roleAllowList: Record<Role, string[]> = {
     '/marketplace', '/skill', '/umkm',
     '/chat', '/komunitas', '/event', '/booking', '/voting',
     '/pengaduan', '/tamu', '/panic', '/keamanan',
-    '/broadcast', '/warga',
+    '/broadcast', '/warga', '/pengaturan',
   ],
   petugas_keuangan: [
-    '/', '/iuran', '/keuangan', '/pengumuman', '/chat', '/verifikasi',
+    '/', '/iuran', '/keuangan', '/pengumuman', '/chat', '/verifikasi', '/pengaturan',
   ],
   petugas_keamanan: [
     '/', '/panic', '/keamanan', '/tamu', '/pengumuman', '/chat',
@@ -34,7 +34,7 @@ const roleAllowList: Record<Role, string[]> = {
     '/marketplace', '/skill', '/umkm',
     '/chat', '/komunitas', '/event', '/booking', '/voting',
     '/pengaduan', '/tamu', '/panic',
-    '/broadcast', '/keamanan', '/warga', '/verifikasi',
+    '/broadcast', '/keamanan', '/warga', '/verifikasi', '/pengaturan',
   ],
 }
 

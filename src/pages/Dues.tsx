@@ -4,6 +4,7 @@ import { useApiQuery } from '@/hooks/useApi'
 import { api, ApiError } from '@/lib/api'
 import { formatRupiah, formatDate } from '@/lib/format'
 import type { Dues as DuesItem, DuesStatus } from '@/types'
+import type { PaymentSettings } from '@/types/settings'
 import PageHeader from '@/components/ui/PageHeader'
 import StatusChip from '@/components/ui/StatusChip'
 import Modal from '@/components/ui/Modal'
@@ -21,6 +22,9 @@ export default function Dues() {
   const { data, loading, refetch } = useApiQuery<DuesItem[]>(() =>
     api.get<DuesItem[]>('/dues')
   )
+  const { data: payment } = useApiQuery<PaymentSettings>(() =>
+    api.get<PaymentSettings>('/settings/payment')
+  )
   const [payTarget, setPayTarget] = useState<DuesItem | null>(null)
   const [method, setMethod] = useState<'transfer' | 'qris'>('transfer')
   const [copied, setCopied] = useState(false)
@@ -32,7 +36,8 @@ export default function Dues() {
   const totalUnpaid = unpaid.reduce((s, d) => s + d.jumlah, 0)
 
   const copyAccount = () => {
-    navigator.clipboard?.writeText('1234567890')
+    if (!payment?.bankAccountNumber) return
+    navigator.clipboard?.writeText(payment.bankAccountNumber)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -137,10 +142,10 @@ export default function Dues() {
             {method === 'transfer' ? (
               <div className="space-y-sm">
                 <div className="card p-base">
-                  <p className="text-caption-sm text-muted">Bank BCA</p>
-                  <p className="text-title-md text-ink">a.n. Kas KSTP Cakung</p>
+                  <p className="text-caption-sm text-muted">{payment?.bankName || 'Bank'}</p>
+                  <p className="text-title-md text-ink">a.n. {payment?.bankAccountHolder || '-'}</p>
                   <div className="mt-sm flex items-center justify-between rounded-sm bg-surface-soft px-md py-sm">
-                    <span className="text-title-md tracking-wider text-ink">1234567890</span>
+                    <span className="text-title-md tracking-wider text-ink">{payment?.bankAccountNumber || '-'}</span>
                     <button
                       onClick={copyAccount}
                       className="flex items-center gap-xxs text-button-sm text-primary"
@@ -150,16 +155,24 @@ export default function Dues() {
                   </div>
                 </div>
                 <p className="text-caption-sm text-muted">
-                  Transfer sesuai nominal, lalu tekan "Saya Sudah Bayar".
+                  {payment?.paymentNote || 'Transfer sesuai nominal, lalu tekan "Saya Sudah Bayar".'}
                 </p>
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <QRDisplay
-                  value={`KSTP-IURAN:${payTarget.id}:${payTarget.jumlah}`}
-                  size={180}
-                  sublabel="Scan dengan e-wallet atau m-banking"
-                />
+                {payment?.qrisImageUrl ? (
+                  <img
+                    src={payment.qrisImageUrl}
+                    alt="QRIS"
+                    className="h-56 w-56 rounded-md border border-hairline object-contain"
+                  />
+                ) : (
+                  <QRDisplay
+                    value={`KSTP-IURAN:${payTarget.id}:${payTarget.jumlah}`}
+                    size={180}
+                    sublabel="Scan dengan e-wallet atau m-banking"
+                  />
+                )}
               </div>
             )}
 

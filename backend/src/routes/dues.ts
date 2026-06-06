@@ -207,6 +207,17 @@ router.post(
       })
       .parse(req.body)
 
+    // Reject if this jenis is disabled in settings
+    const setting = await db.execute({
+      sql: 'SELECT enabled FROM dues_settings WHERE jenis = ?',
+      args: [body.jenis],
+    })
+    if (setting.rows[0] && Number(setting.rows[0].enabled) === 0) {
+      return res.status(400).json({
+        error: `Iuran ${body.jenis} sedang dinonaktifkan. Aktifkan di Pengaturan Iuran terlebih dahulu.`,
+      })
+    }
+
     const residents = await db.execute(
       "SELECT id FROM residents WHERE account_status != 'Nonaktif'"
     )
@@ -232,6 +243,63 @@ router.post(
       created++
     }
     res.status(201).json({ created, total: residents.rows.length })
+  })
+)
+
+// Generate dues for ALL enabled jenis at once, using configured default amount
+// & due day from dues_settings. periode (e.g. "Juli 2026") + year/month for due date.
+router.post(
+  '/generate-from-settings',
+  requireRole('super_admin', 'pengelola', 'petugas_keuangan'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        periode: z.string().min(1),       // label, e.g. "Juli 2026"
+        dueDate: z.string().min(1),        // ISO date YYYY-MM-DD base; due_day overrides the day
+      })
+      .parse(req.body)
+
+    const settings = await db.execute('SELECT * FROM dues_settings WHERE enabled = 1')
+    if (settings.rows.length === 0) {
+      return res.status(400).json({ error: 'Tidak ada jenis iuran yang aktif.' })
+    }
+
+    const residents = await db.execute(
+      "SELECT id FROM residents WHERE role = 'warga' AND account_status = 'Aktif'"
+    )
+
+    const summary: { jenis: string; created: number; amount: number }[] = []
+    for (const s of settings.rows) {
+      const jenis = String(s.jenis)
+      const amount = Number(s.default_amount)
+      const dueDay = Number(s.due_day)
+      // Build jatuh tempo: take year-month from dueDate, set day to dueDay
+      const base = new Date(body.dueDate)
+      const jatuhTempo = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`
+
+      let created = 0
+      for (const r of residents.rows) {
+        const existing = await db.execute({
+          sql: 'SELECT 1 FROM dues WHERE resident_id = ? AND jenis = ? AND periode = ?',
+          args: [String(r.id), jenis, body.periode],
+        })
+        if (existing.rows.length > 0) continue
+        await db.execute({
+          sql: 'INSERT INTO dues (id, resident_id, jenis, periode, jumlah, jatuh_tempo) VALUES (?,?,?,?,?,?)',
+          args: [newId('d'), String(r.id), jenis, body.periode, amount, jatuhTempo],
+        })
+        await notify({
+          userId: String(r.id),
+          type: 'dues_new',
+          title: 'Tagihan Iuran Baru',
+          message: `${jenis} ${body.periode} sebesar Rp${amount.toLocaleString('id-ID')}`,
+          link: '/iuran',
+        })
+        created++
+      }
+      summary.push({ jenis, created, amount })
+    }
+    res.status(201).json({ summary, residents: residents.rows.length })
   })
 )
 

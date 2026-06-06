@@ -32,8 +32,8 @@ export default function ResidentManagement() {
   const { user } = useApp()
   const { data, refetch } = useApiQuery<Resident[]>(() => api.get<Resident[]>('/residents'))
   const [showCreate, setShowCreate] = useState(false)
-  const [createdCode, setCreatedCode] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [createdResident, setCreatedResident] = useState<Resident | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
@@ -68,7 +68,7 @@ export default function ResidentManagement() {
     setSubmitting(true)
     try {
       const created = await api.post<Resident>('/residents', form)
-      setCreatedCode(created.invitationCode ?? null)
+      setCreatedResident(created)
       setForm(emptyForm)
       setShowCreate(false)
       await refetch()
@@ -115,17 +115,19 @@ export default function ResidentManagement() {
   const regenerateCode = async (id: string) => {
     try {
       const res = await api.post<{ invitationCode: string }>(`/residents/${id}/regenerate-code`)
-      setCreatedCode(res.invitationCode)
+      // Find the resident from list and pretend it's a freshly-created result for the modal
+      const r = (data ?? []).find((x) => x.id === id)
+      if (r) setCreatedResident({ ...r, invitationCode: res.invitationCode })
       await refetch()
     } catch (err) {
       console.error(err)
     }
   }
 
-  const copyCode = (code: string) => {
-    navigator.clipboard?.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+  const copyText = (key: string, value: string) => {
+    navigator.clipboard?.writeText(value)
+    setCopied(key)
+    setTimeout(() => setCopied(null), 1500)
   }
 
   return (
@@ -163,15 +165,27 @@ export default function ResidentManagement() {
                 Unit {unitToString(r.unit)} · {r.status} · {r.noHp}
               </p>
               {r.invitationCode && r.accountStatus !== 'Aktif' && (
-                <div className="mt-xxs flex items-center gap-xs">
-                  <code className="rounded-sm bg-surface-soft px-xs py-xxs text-caption-sm font-semibold text-ink">{r.invitationCode}</code>
-                  <button onClick={() => copyCode(r.invitationCode!)} className="text-caption-sm text-primary" aria-label="Salin kode">
-                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                <div className="mt-xxs flex flex-wrap items-center gap-xs">
+                  {r.username && (
+                    <code className="rounded-sm bg-surface-soft px-xs py-xxs text-caption-sm font-semibold text-ink" title="Username">
+                      {r.username}
+                    </code>
+                  )}
+                  <code className="rounded-sm bg-surface-soft px-xs py-xxs text-caption-sm font-semibold text-ink" title="Kode undangan">
+                    {r.invitationCode}
+                  </code>
+                  <button onClick={() => copyText(`code-${r.id}`, r.invitationCode!)} className="text-caption-sm text-primary" aria-label="Salin kode">
+                    {copied === `code-${r.id}` ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
                   <button onClick={() => regenerateCode(r.id)} className="text-caption-sm text-muted hover:text-ink" aria-label="Generate ulang kode">
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
                 </div>
+              )}
+              {r.username && r.accountStatus === 'Aktif' && (
+                <p className="mt-xxs text-caption-sm text-muted">
+                  username: <span className="font-semibold text-ink">{r.username}</span>
+                </p>
               )}
             </div>
             <div className="flex flex-col items-end gap-sm">
@@ -305,18 +319,43 @@ export default function ResidentManagement() {
         )}
       </Modal>
 
-      {/* Show generated code modal */}
-      <Modal open={!!createdCode} onClose={() => setCreatedCode(null)} title="Kode Undangan">
-        {createdCode && (
-          <div className="text-center">
-            <p className="text-body-sm text-muted">Kode undangan berhasil dibuat.</p>
-            <p className="mt-base text-display-md tracking-wider text-ink">{createdCode}</p>
-            <button onClick={() => copyCode(createdCode)} className="btn-secondary mt-base">
-              {copied ? <><Check className="h-4 w-4" /> Tersalin</> : <><Copy className="h-4 w-4" /> Salin Kode</>}
-            </button>
-            <p className="mt-base text-caption-sm text-muted">
-              Bagikan kode ini ke warga via WhatsApp, SMS, atau cetak manual untuk aktivasi.
+      {/* Show generated credentials modal */}
+      <Modal open={!!createdResident} onClose={() => setCreatedResident(null)} title="Kredensial Akun Warga">
+        {createdResident && (
+          <div>
+            <p className="rounded-md bg-success-soft p-base text-body-sm text-success">
+              Akun <strong>{createdResident.nama}</strong> berhasil dibuat. Bagikan
+              kode undangan di bawah ke warga via WhatsApp / SMS / cetak. Warga
+              hanya perlu memasukkan kode + membuat password sendiri untuk login.
             </p>
+
+            <div className="mt-base space-y-md">
+              <CredRow
+                label="Username (otomatis)"
+                value={createdResident.username ?? '-'}
+                copyKey="username"
+                copied={copied === 'username'}
+                onCopy={() => copyText('username', createdResident.username ?? '')}
+              />
+              <CredRow
+                label="Kode Undangan"
+                value={createdResident.invitationCode ?? '-'}
+                copyKey="code"
+                copied={copied === 'code'}
+                onCopy={() => copyText('code', createdResident.invitationCode ?? '')}
+                emphasize
+              />
+            </div>
+
+            <div className="mt-base rounded-md bg-surface-soft p-base">
+              <p className="text-caption-sm text-muted">Cara aktivasi untuk warga:</p>
+              <ol className="mt-xs list-decimal pl-base text-body-sm text-body">
+                <li>Buka aplikasi → klik <strong>Aktivasi Akun</strong></li>
+                <li>Masukkan kode undangan di atas</li>
+                <li>Konfirmasi data lalu buat password</li>
+                <li>Setelah aktif, login dengan username, no HP, atau kode + password</li>
+              </ol>
+            </div>
           </div>
         )}
       </Modal>
@@ -328,6 +367,31 @@ export default function ResidentManagement() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+    </div>
+  )
+}
+
+function CredRow({
+  label, value, copied, onCopy, emphasize,
+}: {
+  label: string
+  value: string
+  copyKey: string
+  copied: boolean
+  onCopy: () => void
+  emphasize?: boolean
+}) {
+  return (
+    <div>
+      <p className="text-caption-sm text-muted">{label}</p>
+      <div className="mt-xxs flex items-center justify-between gap-sm rounded-sm bg-surface-soft px-md py-sm">
+        <code className={`flex-1 truncate font-semibold text-ink ${emphasize ? 'text-display-md tracking-wider' : 'text-title-md'}`}>
+          {value}
+        </code>
+        <button onClick={onCopy} className="flex items-center gap-xxs rounded-sm px-md py-xs text-button-sm font-medium text-primary hover:bg-canvas">
+          {copied ? <><Check className="h-4 w-4" /> Tersalin</> : <><Copy className="h-4 w-4" /> Salin</>}
+        </button>
+      </div>
     </div>
   )
 }

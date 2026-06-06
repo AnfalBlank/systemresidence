@@ -6,6 +6,7 @@
 CREATE TABLE IF NOT EXISTS residents (
   id TEXT PRIMARY KEY,
   nama TEXT NOT NULL,
+  username TEXT UNIQUE,
   foto TEXT,
   no_hp TEXT NOT NULL,
   email TEXT,
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS residents (
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 CREATE INDEX IF NOT EXISTS idx_residents_invitation ON residents(invitation_code);
+CREATE INDEX IF NOT EXISTS idx_residents_username ON residents(username);
 CREATE INDEX IF NOT EXISTS idx_residents_role ON residents(role);
 
 -- ----- Announcements -----

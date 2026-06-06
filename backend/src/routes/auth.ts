@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { db } from '../db/client.js'
 import { hashPassword, signToken, verifyPassword } from '../utils/auth.js'
+import { generateUniqueUsername } from '../utils/id.js'
 import { asyncHandler } from '../middleware/error.js'
 import { requireAuth } from '../middleware/auth.js'
 import { mapResident } from '../utils/mappers.js'
@@ -41,13 +42,28 @@ router.post(
       .parse(req.body)
 
     const result = await db.execute({
-      sql: 'SELECT id, role, account_status FROM residents WHERE invitation_code = ?',
+      sql: 'SELECT * FROM residents WHERE invitation_code = ?',
       args: [code.trim().toUpperCase()],
     })
     const row = result.rows[0]
     if (!row) return res.status(404).json({ error: 'Kode undangan tidak ditemukan.' })
     if (row.account_status === 'Aktif')
       return res.status(409).json({ error: 'Akun sudah aktif.' })
+
+    // Backfill username if missing (older rows created before username column)
+    let username = row.username ? String(row.username) : null
+    if (!username) {
+      username = await generateUniqueUsername(
+        String(row.nama),
+        String(row.blok),
+        String(row.lantai),
+        String(row.nomor_unit)
+      )
+      await db.execute({
+        sql: 'UPDATE residents SET username = ? WHERE id = ?',
+        args: [username, row.id],
+      })
+    }
 
     const hash = await hashPassword(password)
     await db.execute({
@@ -66,20 +82,21 @@ router.post(
   })
 )
 
-// POST /auth/login — phone + password OR invitation code + password
+// POST /auth/login — username, phone, OR invitation code + password
 router.post(
   '/login',
   asyncHandler(async (req, res) => {
     const body = z
       .object({
-        identifier: z.string().min(1), // phone or invitation code
+        identifier: z.string().min(1), // username, phone, or invitation code
         password: z.string().min(1),
       })
       .parse(req.body)
 
+    const ident = body.identifier.trim()
     const result = await db.execute({
-      sql: 'SELECT * FROM residents WHERE (no_hp = ? OR invitation_code = ?) LIMIT 1',
-      args: [body.identifier, body.identifier.toUpperCase()],
+      sql: 'SELECT * FROM residents WHERE username = ? OR no_hp = ? OR invitation_code = ? LIMIT 1',
+      args: [ident.toLowerCase(), ident, ident.toUpperCase()],
     })
     const row = result.rows[0]
     if (!row || !row.password_hash) {

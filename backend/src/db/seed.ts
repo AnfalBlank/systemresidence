@@ -120,11 +120,19 @@ async function seed() {
   ]
 
   for (const r of residents) {
+    const username = (r.nama
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .join('.')) +
+      `.${r.blok.toLowerCase()}${r.lantai}${r.nomor_unit}`
     await db.execute({
-      sql: `INSERT INTO residents (id, nama, no_hp, email, tanggal_lahir, jenis_kelamin, blok, lantai, nomor_unit, status, role, account_status, invitation_code, password_hash)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      sql: `INSERT INTO residents (id, nama, username, no_hp, email, tanggal_lahir, jenis_kelamin, blok, lantai, nomor_unit, status, role, account_status, invitation_code, password_hash)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       args: [
-        r.id, r.nama, r.no_hp, r.email ?? null, r.tanggal_lahir ?? null, r.jenis_kelamin ?? null,
+        r.id, r.nama, username, r.no_hp, r.email ?? null, r.tanggal_lahir ?? null, r.jenis_kelamin ?? null,
         r.blok, r.lantai, r.nomor_unit, r.status, r.role, r.account_status, r.invitation_code, r.password_hash ?? null,
       ],
     })

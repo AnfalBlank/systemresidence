@@ -4,6 +4,7 @@ import { ArrowRight, Check, Eye, EyeOff, KeyRound, ShieldCheck } from 'lucide-re
 import { useApp } from '@/context/AppContext'
 import { api, ApiError, setToken } from '@/lib/api'
 import { unitToString } from '@/lib/format'
+import { showDemoHelpers } from '@/config/env'
 import type { Resident } from '@/types'
 import Logo from '@/components/layout/Logo'
 
@@ -145,9 +146,11 @@ export default function Activation() {
               <p className="mt-base text-center text-caption-sm text-muted">
                 Tidak ada registrasi bebas. Akun dibuat oleh pengelola terlebih dahulu.
               </p>
-              <p className="mt-xs text-center text-caption-sm text-muted">
-                Coba kode demo: <span className="font-semibold text-ink">KSTP-NEWUSR</span>
-              </p>
+              {showDemoHelpers && (
+                <p className="mt-xs text-center text-caption-sm text-muted">
+                  Coba kode demo: <span className="font-semibold text-ink">KSTP-NEWUSR</span>
+                </p>
+              )}
             </form>
           )}
 

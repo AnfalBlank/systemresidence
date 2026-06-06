@@ -4,7 +4,7 @@ import { db } from '../db/client.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapResident } from '../utils/mappers.js'
-import { generateInvitationCode, newId } from '../utils/id.js'
+import { generateInvitationCode, generateUniqueUsername, newId } from '../utils/id.js'
 
 const router = Router()
 
@@ -44,12 +44,14 @@ router.post(
 
     const id = newId('u')
     const code = generateInvitationCode()
+    const username = await generateUniqueUsername(body.nama, body.blok, body.lantai, body.nomor)
     await db.execute({
-      sql: `INSERT INTO residents (id, nama, no_hp, email, blok, lantai, nomor_unit, status, role, account_status, invitation_code)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Belum Aktivasi', ?)`,
+      sql: `INSERT INTO residents (id, nama, username, no_hp, email, blok, lantai, nomor_unit, status, role, account_status, invitation_code)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Belum Aktivasi', ?)`,
       args: [
         id,
         body.nama,
+        username,
         body.noHp,
         body.email || null,
         body.blok,

@@ -20,6 +20,7 @@ export interface Unit {
 export interface Resident {
   id: string
   nama: string
+  username?: string
   foto?: string
   noHp: string
   email?: string

@@ -12,6 +12,7 @@ export function mapResident(row: Row): unknown {
   return {
     id: s(row.id),
     nama: s(row.nama),
+    username: sOpt(row.username),
     foto: sOpt(row.foto),
     noHp: s(row.no_hp),
     email: sOpt(row.email),

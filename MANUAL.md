@@ -122,14 +122,30 @@ Semua akun memakai password: **`password123`**
 **Tidak ada registrasi bebas.** Akun dibuat oleh pengelola terlebih dahulu.
 
 1. **Pengelola** membuat data warga di menu **Manajemen Warga** → sistem otomatis
-   membuat **Kode Undangan** (contoh: `KSTP-7HD82K`).
+   membuat **Username** (mis. `ahmad.fauzi.b0412`) dan **Kode Undangan**
+   (mis. `KSTP-7HD82K`).
 2. Kode dibagikan ke warga via WhatsApp / SMS / cetak.
 3. Warga membuka aplikasi → halaman **Aktivasi Akun**.
 4. Warga memasukkan kode undangan → sistem menampilkan data yang sudah dibuat.
 5. Warga mengonfirmasi data, lalu membuat **password**.
 6. Akun aktif → warga otomatis masuk ke dashboard.
 
-Untuk login berikutnya, warga memakai **No HP + password** di halaman **Masuk**.
+Untuk login berikutnya, warga bisa pakai salah satu dari:
+- **Username** (auto, mis. `ahmad.fauzi.b0412`)
+- **Nomor HP**
+- **Kode undangan**
+
+…ditambah password yang dibuat saat aktivasi.
+
+### Production Build
+
+Pada production build (`npm run build` tanpa `VITE_SHOW_DEMO=true`), daftar
+akun demo dan kode undangan demo **tidak ditampilkan** di halaman Login dan
+Aktivasi. Untuk mengaktifkan helper demo (hanya untuk development), set di
+`.env` frontend:
+```
+VITE_SHOW_DEMO=true
+```
 
 ---
 
@@ -229,15 +245,29 @@ Hitungan otomatis nol setelah Anda membuka percakapan tersebut.
 ## 7. Panduan Pengelola / Super Admin
 
 ### 7.1 Manajemen Warga (`/warga`)
-- **Tambah Warga:** isi nama, no HP, unit (blok/lantai/nomor), status, role →
-  sistem otomatis membuat kode undangan.
-- **Edit Warga:** ubah nama, no HP, email, status penghuni, **role**, dan
-  **status akun** (Aktif/Nonaktif) lewat ikon pensil.
-- **Hapus Warga:** ikon tempat sampah (tidak bisa menghapus akun sendiri).
-- **Salin / Generate ulang** kode undangan.
-- Cari warga berdasarkan nama, unit, atau kode.
 
-> Semua modul yang dikelola pengelola/admin kini mendukung CRUD penuh
+Halaman ini adalah pusat **manajemen user** untuk pengelola/super admin.
+
+**Tambah Warga Baru** (alur lengkap):
+1. Klik **Tambah Warga** → isi nama, no HP, unit (blok/lantai/nomor), status, role
+2. Sistem otomatis membuat:
+   - **Username** (format: `nama.depan.nama.belakang.blokLantaiNomor`, contoh: `lina.marlina.a0508`)
+   - **Kode undangan** (format: `KSTP-XXXXXX`)
+3. Modal hasil menampilkan kedua kredensial dengan tombol **Salin** masing-masing
+4. Bagikan kode undangan ke warga via WhatsApp / SMS / cetak
+5. Warga membuka aplikasi → **Aktivasi Akun** → masukkan kode → konfirmasi data → **buat password sendiri**
+6. Setelah aktif, warga bisa login dengan **username, no HP, atau kode undangan** + password
+
+**Edit Warga:** ubah nama, no HP, email, status penghuni, **role**, dan **status akun**
+(Aktif/Nonaktif) lewat ikon pensil. Username terkunci (auto-generated).
+
+**Hapus Warga:** ikon tempat sampah (tidak bisa menghapus akun sendiri).
+
+**Salin / Generate ulang** kode undangan untuk warga yang belum aktif.
+
+**Cari** warga berdasarkan nama, unit, kode undangan, atau username.
+
+> Semua modul yang dikelola pengelola/admin mendukung CRUD penuh
 > (Create, Read, Update, Delete): Pengumuman, Berita Duka, Event, Crowdfunding,
 > E-Voting, Fasilitas, dan Warga. Setiap kartu memiliki tombol **Edit** dan
 > **Hapus**, dengan dialog konfirmasi sebelum penghapusan.

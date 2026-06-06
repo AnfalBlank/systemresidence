@@ -10,6 +10,7 @@ import {
   EyeOff,
   Calendar,
   User,
+  AtSign,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useApp } from '@/context/AppContext'
@@ -104,6 +105,7 @@ export default function Profile() {
       </div>
 
       <div className="card mb-lg divide-y divide-hairline-soft">
+        {user.username && <InfoRow icon={AtSign} label="Username" value={user.username} />}
         <InfoRow icon={Phone} label="Nomor HP" value={user.noHp} />
         {user.email && <InfoRow icon={Mail} label="Email" value={user.email} />}
         <InfoRow icon={Home} label="Hunian" value={`Blok ${user.unit.blok} · Lantai ${user.unit.lantai} · No ${user.unit.nomor}`} />

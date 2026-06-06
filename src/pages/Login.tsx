@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Eye, EyeOff, KeyRound } from 'lucide-react'
 import { useApp } from '@/context/AppContext'
 import { ApiError } from '@/lib/api'
+import { showDemoHelpers } from '@/config/env'
 import Logo from '@/components/layout/Logo'
 
 export default function Login() {
@@ -39,20 +40,20 @@ export default function Login() {
           </div>
           <h1 className="text-display-lg text-ink">Masuk</h1>
           <p className="mt-xs text-body-md text-muted">
-            Masukkan nomor HP atau kode undangan beserta password Anda.
+            Masuk dengan username, nomor HP, atau kode undangan Anda.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-lg space-y-base">
             <div>
               <label htmlFor="ident" className="field-label">
-                No HP atau Kode Undangan
+                Username / No HP / Kode Undangan
               </label>
               <input
                 id="ident"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="field-input"
-                placeholder="08123456789 atau KSTP-XXXXXX"
+                placeholder="contoh: nama.b0412 atau 08xxxxxxxxxx"
                 autoComplete="username"
               />
             </div>
@@ -81,20 +82,10 @@ export default function Login() {
               </div>
             </div>
 
-            {error && (
-              <p className="text-body-sm text-primary-error">{error}</p>
-            )}
+            {error && <p className="text-body-sm text-primary-error">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full"
-            >
-              {loading ? 'Memproses…' : (
-                <>
-                  Masuk <ArrowRight className="h-4 w-4" />
-                </>
-              )}
+            <button type="submit" disabled={loading} className="btn-primary w-full">
+              {loading ? 'Memproses…' : (<>Masuk <ArrowRight className="h-4 w-4" /></>)}
             </button>
           </form>
 
@@ -105,16 +96,18 @@ export default function Login() {
             </Link>
           </div>
 
-          <div className="mt-lg rounded-md bg-surface-soft p-base text-caption-sm text-muted">
-            <p className="font-semibold text-ink">Akun Demo (password: password123)</p>
-            <ul className="mt-xs space-y-xxs">
-              <li>Warga — 08123456789</li>
-              <li>Pengelola — 08111111111</li>
-              <li>Petugas Keuangan — 08222222222</li>
-              <li>Petugas Keamanan — 08333333333</li>
-              <li>Super Admin — 08444444444</li>
-            </ul>
-          </div>
+          {showDemoHelpers && (
+            <div className="mt-lg rounded-md bg-surface-soft p-base text-caption-sm text-muted">
+              <p className="font-semibold text-ink">Akun Demo (password: password123)</p>
+              <ul className="mt-xs space-y-xxs">
+                <li>Warga — 08123456789</li>
+                <li>Pengelola — 08111111111</li>
+                <li>Petugas Keuangan — 08222222222</li>
+                <li>Petugas Keamanan — 08333333333</li>
+                <li>Super Admin — 08444444444</li>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>

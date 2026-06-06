@@ -17,7 +17,7 @@ function toneFor(status: ComplaintStatus) {
 
 export default function Complaints() {
   const { user } = useApp()
-  const canManage = user && ['super_admin', 'pengelola', 'petugas_keamanan'].includes(user.role)
+  const canManage = user && ['super_admin', 'pengelola'].includes(user.role)
   const { data, refetch } = useApiQuery<Complaint[]>(() => api.get<Complaint[]>('/complaints'))
   const [open, setOpen] = useState(false)
   const [kategori, setKategori] = useState<ComplaintCategory>('Kebersihan')

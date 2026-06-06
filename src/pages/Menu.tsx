@@ -8,7 +8,7 @@ import Avatar from '@/components/ui/Avatar'
 
 const roleAllowList: Record<Role, string[]> = {
   warga: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic'],
-  pengelola: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic', '/broadcast', '/warga'],
+  pengelola: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic', '/keamanan', '/broadcast', '/warga'],
   petugas_keuangan: ['/iuran', '/keuangan', '/pengumuman', '/verifikasi'],
   petugas_keamanan: ['/panic', '/keamanan', '/tamu', '/pengumuman'],
   super_admin: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic', '/broadcast', '/keamanan', '/warga', '/verifikasi'],

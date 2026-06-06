@@ -16,13 +16,12 @@ const selectComplaintSql = `
   JOIN residents r ON r.id = c.resident_id
 `
 
-// Warga: list own
+// Warga: list own. Admins (super_admin, pengelola) see all complaints.
+// Petugas Keamanan does NOT manage complaints per PRD section 2.
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const isAdmin = ['super_admin', 'pengelola', 'petugas_keamanan'].includes(
-      req.user!.role
-    )
+    const isAdmin = ['super_admin', 'pengelola'].includes(req.user!.role)
     const sql = isAdmin
       ? `${selectComplaintSql} ORDER BY c.created_at DESC`
       : `${selectComplaintSql} WHERE c.resident_id = ? ORDER BY c.created_at DESC`
@@ -63,9 +62,9 @@ router.post(
       sql: `${selectComplaintSql} WHERE c.id = ?`,
       args: [id],
     })
-    // Notify pengelola/admin/keamanan
+    // Notify pengelola/admin (per PRD, petugas_keamanan does not manage complaints)
     const officers = await db.execute(
-      "SELECT id FROM residents WHERE role IN ('pengelola','super_admin','petugas_keamanan') AND account_status = 'Aktif'"
+      "SELECT id FROM residents WHERE role IN ('pengelola','super_admin') AND account_status = 'Aktif'"
     )
     await notifyMany(
       officers.rows.map((r) => String(r.id)),
@@ -83,7 +82,7 @@ router.post(
 
 router.patch(
   '/:id/status',
-  requireRole('super_admin', 'pengelola', 'petugas_keamanan'),
+  requireRole('super_admin', 'pengelola'),
   asyncHandler(async (req, res) => {
     const { status } = z
       .object({ status: z.enum(['Baru', 'Diproses', 'Selesai']) })

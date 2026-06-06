@@ -19,7 +19,7 @@ const roleAllowList: Record<Role, string[]> = {
     '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah',
     '/marketplace', '/skill', '/umkm',
     '/chat', '/komunitas', '/event', '/booking', '/voting',
-    '/pengaduan', '/tamu', '/panic',
+    '/pengaduan', '/tamu', '/panic', '/keamanan',
     '/broadcast', '/warga',
   ],
   petugas_keuangan: [

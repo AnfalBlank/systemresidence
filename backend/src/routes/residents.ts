@@ -49,28 +49,59 @@ router.post(
       sql: `INSERT INTO residents (id, nama, username, no_hp, email, blok, lantai, nomor_unit, status, role, account_status, invitation_code)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Belum Aktivasi', ?)`,
       args: [
-        id,
-        body.nama,
-        username,
-        body.noHp,
-        body.email || null,
-        body.blok,
-        body.lantai,
-        body.nomor,
-        body.status,
-        body.role,
-        code,
+        id, body.nama, username, body.noHp, body.email || null,
+        body.blok, body.lantai, body.nomor, body.status, body.role, code,
       ],
     })
-    const result = await db.execute({
-      sql: 'SELECT * FROM residents WHERE id = ?',
-      args: [id],
-    })
+    const result = await db.execute({ sql: 'SELECT * FROM residents WHERE id = ?', args: [id] })
     res.status(201).json(mapResident(result.rows[0]))
   })
 )
 
-// PATCH /residents/:id (admin/pengelola)
+// PATCH /residents/me — update own basic profile fields.
+//
+// IMPORTANT: This route MUST come before PATCH /:id, otherwise Express will
+// match the parameterised route first and `:id="me"` will be denied by
+// requireRole. Order matters.
+//
+// SECURITY: Schema does NOT accept `role` or `accountStatus`. `.strict()`
+// rejects any extra fields. Do not add them without proper role-checking.
+router.patch(
+  '/me',
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        nama: z.string().min(1).optional(),
+        email: z.string().optional(),
+        tanggalLahir: z.string().optional(),
+        jenisKelamin: z.enum(['Laki-laki', 'Perempuan']).optional(),
+      })
+      .strict()
+      .parse(req.body)
+    const updates: string[] = []
+    const args: (string | null)[] = []
+    if (body.nama !== undefined) { updates.push('nama = ?'); args.push(body.nama) }
+    if (body.email !== undefined) { updates.push('email = ?'); args.push(body.email || null) }
+    if (body.tanggalLahir !== undefined) { updates.push('tanggal_lahir = ?'); args.push(body.tanggalLahir || null) }
+    if (body.jenisKelamin !== undefined) { updates.push('jenis_kelamin = ?'); args.push(body.jenisKelamin) }
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' })
+    updates.push('updated_at = unixepoch()')
+    args.push(req.user!.id)
+    await db.execute({
+      sql: `UPDATE residents SET ${updates.join(', ')} WHERE id = ?`,
+      args,
+    })
+    const result = await db.execute({
+      sql: 'SELECT * FROM residents WHERE id = ?',
+      args: [req.user!.id],
+    })
+    res.json(mapResident(result.rows[0]))
+  })
+)
+
+// PATCH /residents/:id — admin/pengelola edit any resident.
+// Role + accountStatus changes are restricted to super_admin to prevent
+// privilege escalation by pengelola.
 router.patch(
   '/:id',
   requireRole('super_admin', 'pengelola'),
@@ -88,6 +119,27 @@ router.patch(
           .optional(),
       })
       .parse(req.body)
+
+    const isSuperAdmin = req.user!.role === 'super_admin'
+    const isSelf = id === req.user!.id
+
+    if (body.role !== undefined) {
+      if (!isSuperAdmin) {
+        return res.status(403).json({
+          error: 'Hanya Super Admin yang dapat mengubah role pengguna.',
+        })
+      }
+      if (isSelf) {
+        return res.status(400).json({
+          error: 'Tidak dapat mengubah role diri sendiri.',
+        })
+      }
+    }
+    if (body.accountStatus !== undefined && isSelf) {
+      return res.status(400).json({
+        error: 'Tidak dapat mengubah status akun diri sendiri.',
+      })
+    }
 
     const updates: string[] = []
     const args: (string | null)[] = []
@@ -123,39 +175,6 @@ router.post(
       args: [code, req.params.id],
     })
     res.json({ invitationCode: code })
-  })
-)
-
-// PATCH /residents/me — update own basic profile fields
-router.patch(
-  '/me',
-  asyncHandler(async (req, res) => {
-    const body = z
-      .object({
-        nama: z.string().min(1).optional(),
-        email: z.string().optional(),
-        tanggalLahir: z.string().optional(),
-        jenisKelamin: z.enum(['Laki-laki', 'Perempuan']).optional(),
-      })
-      .parse(req.body)
-    const updates: string[] = []
-    const args: (string | null)[] = []
-    if (body.nama !== undefined) { updates.push('nama = ?'); args.push(body.nama) }
-    if (body.email !== undefined) { updates.push('email = ?'); args.push(body.email || null) }
-    if (body.tanggalLahir !== undefined) { updates.push('tanggal_lahir = ?'); args.push(body.tanggalLahir || null) }
-    if (body.jenisKelamin !== undefined) { updates.push('jenis_kelamin = ?'); args.push(body.jenisKelamin) }
-    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' })
-    updates.push('updated_at = unixepoch()')
-    args.push(req.user!.id)
-    await db.execute({
-      sql: `UPDATE residents SET ${updates.join(', ')} WHERE id = ?`,
-      args,
-    })
-    const result = await db.execute({
-      sql: 'SELECT * FROM residents WHERE id = ?',
-      args: [req.user!.id],
-    })
-    res.json(mapResident(result.rows[0]))
   })
 )
 

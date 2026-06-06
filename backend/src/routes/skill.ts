@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { db } from '../db/client.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapSkillProvider } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
@@ -88,6 +88,36 @@ router.post(
       args: [newId('sr'), req.params.id, req.user!.id, body.rating, body.komentar ?? ''],
     })
     res.status(201).json({ ok: true })
+  })
+)
+
+// DELETE provider — owner can remove own listing; admin/pengelola can moderate.
+router.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const result = await db.execute({
+      sql: 'SELECT resident_id FROM skill_providers WHERE id = ?',
+      args: [req.params.id],
+    })
+    const row = result.rows[0]
+    if (!row) return res.status(404).json({ error: 'Penyedia jasa tidak ditemukan' })
+    const isOwner = String(row.resident_id) === req.user!.id
+    const isAdmin = ['super_admin', 'pengelola'].includes(req.user!.role)
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Tidak diizinkan menghapus listing ini' })
+    }
+    await db.execute({ sql: 'DELETE FROM skill_providers WHERE id = ?', args: [req.params.id] })
+    res.json({ ok: true })
+  })
+)
+
+// DELETE a review — admin/pengelola moderation
+router.delete(
+  '/reviews/:reviewId',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    await db.execute({ sql: 'DELETE FROM skill_reviews WHERE id = ?', args: [req.params.reviewId] })
+    res.json({ ok: true })
   })
 )
 

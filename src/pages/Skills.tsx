@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Star, MessageCircle, Search, X, Plus } from 'lucide-react'
+import { Star, MessageCircle, Search, X, Plus, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useApiQuery } from '@/hooks/useApi'
 import { api, ApiError } from '@/lib/api'
+import { useApp } from '@/context/AppContext'
 import { getIcon } from '@/lib/icons'
 import { formatDate } from '@/lib/format'
 import type { SkillProvider, SkillReview } from '@/types'
@@ -26,6 +27,8 @@ const skillCategories = [
 
 export default function Skills() {
   const navigate = useNavigate()
+  const { user } = useApp()
+  const canModerate = user && ['super_admin', 'pengelola'].includes(user.role)
   const { data, refetch } = useApiQuery<SkillProvider[]>(() => api.get<SkillProvider[]>('/skill'))
   const [query, setQuery] = useState('')
   const [activeCat, setActiveCat] = useState<string | null>(null)
@@ -90,6 +93,17 @@ export default function Skills() {
     navigate(
       `/chat?peer=${encodeURIComponent(s.residentId)}&nama=${encodeURIComponent(s.nama)}&unit=${encodeURIComponent(s.unit)}`
     )
+  }
+
+  const deleteProvider = async (s: SkillProvider) => {
+    if (!confirm(`Hapus penyedia jasa "${s.nama}" dari direktori?`)) return
+    try {
+      await api.delete(`/skill/${s.id}`)
+      setSelected(null)
+      await refetch()
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Gagal menghapus.')
+    }
   }
 
   return (
@@ -172,6 +186,11 @@ export default function Skills() {
             <button onClick={() => setShowReviewForm((v) => !v)} className="btn-primary flex-1">
               <Star className="h-4 w-4" /> Tulis Review
             </button>
+            {canModerate && (
+              <button onClick={() => selected && deleteProvider(selected)} aria-label="Hapus penyedia" className="flex items-center justify-center rounded-sm border border-hairline px-base text-muted hover:border-primary-error hover:text-primary-error">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
           </div>
         }
       >

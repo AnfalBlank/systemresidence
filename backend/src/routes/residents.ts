@@ -178,6 +178,51 @@ router.post(
   })
 )
 
+// POST /residents/:id/reset-password — admin resets a warga's password.
+// Returns the new temporary password so admin can share it. Only super_admin
+// and pengelola may do this.
+router.post(
+  '/:id/reset-password',
+  requireRole('super_admin', 'pengelola'),
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        // Optional explicit password; if omitted a temp one is generated.
+        newPassword: z.string().min(6).optional(),
+      })
+      .parse(req.body ?? {})
+
+    const target = await db.execute({
+      sql: 'SELECT id, nama, account_status FROM residents WHERE id = ?',
+      args: [req.params.id],
+    })
+    const row = target.rows[0]
+    if (!row) return res.status(404).json({ error: 'Warga tidak ditemukan' })
+
+    // Generate a readable temp password if not provided
+    const tempPassword =
+      body.newPassword ?? `kstp${Math.floor(1000 + Math.random() * 9000)}`
+    const { hashPassword } = await import('../utils/auth.js')
+    const hash = await hashPassword(tempPassword)
+
+    // If account was never activated, activating + setting password makes sense.
+    const newStatus =
+      row.account_status === 'Belum Aktivasi' ? 'Aktif' : row.account_status
+
+    await db.execute({
+      sql: 'UPDATE residents SET password_hash = ?, account_status = ?, updated_at = unixepoch() WHERE id = ?',
+      args: [hash, newStatus, req.params.id],
+    })
+
+    res.json({
+      ok: true,
+      nama: String(row.nama),
+      temporaryPassword: tempPassword,
+      note: 'Bagikan password sementara ini ke warga. Sarankan segera ganti password setelah login.',
+    })
+  })
+)
+
 // DELETE /residents/:id — remove a resident (admin only, cannot delete self)
 router.delete(
   '/:id',

@@ -22,6 +22,8 @@ function toneFor(status: DuesStatus) {
 export default function PaymentVerification() {
   const { data, refetch } = useApiQuery<AdminDues[]>(() => api.get<AdminDues[]>('/dues/all'))
   const [filter, setFilter] = useState<'Menunggu Verifikasi' | 'Semua'>('Menunggu Verifikasi')
+  const [filterJenis, setFilterJenis] = useState<DuesType | 'Semua'>('Semua')
+  const [filterBlok, setFilterBlok] = useState<string>('Semua')
   const [processing, setProcessing] = useState<string | null>(null)
   const [showGenerate, setShowGenerate] = useState(false)
   const [genForm, setGenForm] = useState({
@@ -31,7 +33,14 @@ export default function PaymentVerification() {
   const [genError, setGenError] = useState('')
 
   const dues = data ?? []
-  const list = filter === 'Semua' ? dues : dues.filter((d) => d.status === filter)
+  const blokOf = (unit: string) => unit.split('-')[0]?.trim() || unit
+  const bloks = Array.from(new Set(dues.map((d) => blokOf(d.residentUnit)))).sort()
+  const list = dues.filter(
+    (d) =>
+      (filter === 'Semua' || d.status === filter) &&
+      (filterJenis === 'Semua' || d.jenis === filterJenis) &&
+      (filterBlok === 'Semua' || blokOf(d.residentUnit) === filterBlok)
+  )
   const pendingCount = dues.filter((d) => d.status === 'Menunggu Verifikasi').length
 
   const verify = async (id: string) => {
@@ -103,7 +112,7 @@ export default function PaymentVerification() {
         }
       />
 
-      <div className="mb-lg flex gap-sm">
+      <div className="mb-lg flex flex-wrap items-center gap-sm">
         {(['Menunggu Verifikasi', 'Semua'] as const).map((f) => (
           <button
             key={f}
@@ -113,6 +122,14 @@ export default function PaymentVerification() {
             {f}
           </button>
         ))}
+        <select value={filterJenis} onChange={(e) => setFilterJenis(e.target.value as DuesType | 'Semua')} className="h-10 rounded-full border border-hairline bg-canvas px-base text-button-sm text-ink">
+          <option value="Semua">Semua Jenis</option>
+          {duesTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select value={filterBlok} onChange={(e) => setFilterBlok(e.target.value)} className="h-10 rounded-full border border-hairline bg-canvas px-base text-button-sm text-ink">
+          <option value="Semua">Semua Blok</option>
+          {bloks.map((b) => <option key={b} value={b}>Blok {b}</option>)}
+        </select>
       </div>
 
       <div className="space-y-base">

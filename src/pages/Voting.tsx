@@ -24,8 +24,14 @@ export default function Voting() {
     judul: '', tipe: 'Musyawarah' as VoteType, deskripsi: '', berakhir: '', opsi: ['', ''],
   })
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [filterStatus, setFilterStatus] = useState<'Semua' | 'Berlangsung' | 'Selesai'>('Semua')
+  const [filterTipe, setFilterTipe] = useState<VoteType | 'Semua'>('Semua')
 
-  const votings = data ?? []
+  const votings = (data ?? []).filter(
+    (v) =>
+      (filterStatus === 'Semua' || v.status === filterStatus) &&
+      (filterTipe === 'Semua' || v.tipe === filterTipe)
+  )
 
   const openVote = (v: VotingItem) => { setActive(v); setChoice(null); setError('') }
 
@@ -92,6 +98,31 @@ export default function Voting() {
         <p className="text-body-sm text-body">
           Berlaku aturan <strong>1 Unit = 1 Suara</strong>. Pastikan pilihan Anda sudah benar.
         </p>
+      </div>
+
+      <div className="mb-base space-y-sm">
+        <div className="flex flex-wrap gap-xs">
+          {(['Semua', 'Berlangsung', 'Selesai'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`rounded-full border px-md py-xs text-button-sm font-medium transition-colors ${filterStatus === s ? 'border-ink bg-ink text-white' : 'border-hairline text-ink'}`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-xs">
+          {(['Semua', ...voteTypes] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setFilterTipe(t as VoteType | 'Semua')}
+              className={`rounded-full border px-md py-xs text-caption-sm font-medium transition-colors ${filterTipe === t ? 'border-primary bg-primary-disabled text-primary-error' : 'border-hairline text-muted'}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-base">

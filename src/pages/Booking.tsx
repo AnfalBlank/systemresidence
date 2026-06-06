@@ -26,6 +26,7 @@ export default function Booking() {
   const [waktu, setWaktu] = useState('')
   const [keperluan, setKeperluan] = useState('')
   const [error, setError] = useState('')
+  const [filterStatus, setFilterStatus] = useState<BookingStatus | 'Semua'>('Semua')
 
   // Facility management (admin)
   const [showFacilityForm, setShowFacilityForm] = useState(false)
@@ -129,7 +130,18 @@ export default function Booking() {
         </div>
       ) : (
         <div className="space-y-base">
-          {(bookings ?? []).map((b) => (
+          <div className="flex flex-wrap gap-xs">
+            {(['Semua', 'Pending', 'Approved', 'Rejected', 'Finished'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className={`rounded-full border px-md py-xs text-button-sm font-medium transition-colors ${filterStatus === s ? 'border-ink bg-ink text-white' : 'border-hairline text-ink'}`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          {(bookings ?? []).filter((b) => filterStatus === 'Semua' || b.status === filterStatus).map((b) => (
             <div key={b.id} className="card p-base">
               <div className="flex items-start justify-between gap-base">
                 <div>

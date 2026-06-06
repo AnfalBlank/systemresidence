@@ -25,8 +25,15 @@ export default function Complaints() {
   const [deskripsi, setDeskripsi] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<ComplaintStatus | 'Semua'>('Semua')
+  const [filterKategori, setFilterKategori] = useState<ComplaintCategory | 'Semua'>('Semua')
 
-  const list = data ?? []
+  const all = data ?? []
+  const list = all.filter(
+    (c) =>
+      (filterStatus === 'Semua' || c.status === filterStatus) &&
+      (filterKategori === 'Semua' || c.kategori === filterKategori)
+  )
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,6 +73,31 @@ export default function Complaints() {
           </button>
         }
       />
+
+      <div className="mb-base space-y-sm">
+        <div className="flex flex-wrap gap-xs">
+          {(['Semua', 'Baru', 'Diproses', 'Selesai'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`rounded-full border px-md py-xs text-button-sm font-medium transition-colors ${filterStatus === s ? 'border-ink bg-ink text-white' : 'border-hairline text-ink'}`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-xs">
+          {(['Semua', ...categories] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setFilterKategori(c as ComplaintCategory | 'Semua')}
+              className={`rounded-full border px-md py-xs text-caption-sm font-medium transition-colors ${filterKategori === c ? 'border-primary bg-primary-disabled text-primary-error' : 'border-hairline text-muted'}`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-base">
         {list.map((c) => (

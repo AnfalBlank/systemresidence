@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { db } from '../db/client.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requireRole } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { mapUmkmAd } from '../utils/mappers.js'
 import { newId } from '../utils/id.js'
@@ -53,6 +53,26 @@ router.post(
       sql: `UPDATE umkm_ads SET ${col} = ${col} + 1 WHERE id = ?`,
       args: [req.params.id],
     })
+    res.json({ ok: true })
+  })
+)
+
+// DELETE — owner can delete own ad; admin/pengelola can moderate any.
+router.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const result = await db.execute({
+      sql: 'SELECT owner_id FROM umkm_ads WHERE id = ?',
+      args: [req.params.id],
+    })
+    const row = result.rows[0]
+    if (!row) return res.status(404).json({ error: 'Iklan tidak ditemukan' })
+    const isOwner = String(row.owner_id) === req.user!.id
+    const isAdmin = ['super_admin', 'pengelola'].includes(req.user!.role)
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Tidak diizinkan menghapus iklan ini' })
+    }
+    await db.execute({ sql: 'DELETE FROM umkm_ads WHERE id = ?', args: [req.params.id] })
     res.json({ ok: true })
   })
 )

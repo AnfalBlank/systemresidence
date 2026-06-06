@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Eye, MousePointerClick, MessageCircle, Store, Plus } from 'lucide-react'
+import { Eye, MousePointerClick, MessageCircle, Store, Plus, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useApiQuery } from '@/hooks/useApi'
 import { api, ApiError } from '@/lib/api'
+import { useApp } from '@/context/AppContext'
 import type { UmkmAd } from '@/types'
 import PageHeader from '@/components/ui/PageHeader'
 import Modal from '@/components/ui/Modal'
@@ -13,6 +14,8 @@ function formatStat(n: number): string {
 
 export default function Umkm() {
   const navigate = useNavigate()
+  const { user } = useApp()
+  const canModerate = user && ['super_admin', 'pengelola'].includes(user.role)
   const { data, refetch } = useApiQuery<UmkmAd[]>(() => api.get<UmkmAd[]>('/umkm'))
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ nama: '', jenis: 'Produk' as 'Produk' | 'Jasa', banner: '', promo: '' })
@@ -20,6 +23,16 @@ export default function Umkm() {
   const [submitting, setSubmitting] = useState(false)
 
   const ads = data ?? []
+
+  const handleDelete = async (ad: UmkmAd) => {
+    if (!confirm(`Hapus iklan "${ad.nama}"?`)) return
+    try {
+      await api.delete(`/umkm/${ad.id}`)
+      await refetch()
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Gagal menghapus iklan.')
+    }
+  }
 
   const handleClick = async (ad: UmkmAd) => {
     try { await api.post(`/umkm/${ad.id}/track`, { event: 'click' }) } catch { /* ignore */ }
@@ -65,6 +78,15 @@ export default function Umkm() {
             <div className="relative">
               {ad.banner && <img src={ad.banner} alt={ad.nama} className="aspect-[2/1] w-full object-cover" loading="lazy" />}
               <span className="absolute left-sm top-sm rounded-full bg-canvas px-md py-xxs text-badge font-semibold text-ink shadow-float">{ad.jenis}</span>
+              {(canModerate || ad.ownerId === user?.id) && (
+                <button
+                  onClick={() => handleDelete(ad)}
+                  aria-label="Hapus iklan"
+                  className="absolute right-sm top-sm flex h-8 w-8 items-center justify-center rounded-full bg-canvas text-muted shadow-float hover:text-primary-error"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
             <div className="p-base">
               <div className="flex items-center gap-sm">

@@ -35,8 +35,15 @@ export default function Events() {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [filterTipe, setFilterTipe] = useState<EventType | 'Semua'>('Semua')
+  const [onlyUpcoming, setOnlyUpcoming] = useState(false)
 
-  const events = data ?? []
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const events = (data ?? []).filter(
+    (e) =>
+      (filterTipe === 'Semua' || e.tipe === filterTipe) &&
+      (!onlyUpcoming || e.tanggal >= todayStr)
+  )
 
   const openCreate = () => { setEditId(null); setForm(emptyForm); setError(''); setOpen(true) }
   const openEdit = (e: CommunityEvent) => {
@@ -100,6 +107,25 @@ export default function Events() {
           ) : undefined
         }
       />
+
+      <div className="mb-lg flex flex-wrap items-center gap-xs">
+        {(['Semua', ...eventTypes] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setFilterTipe(t as EventType | 'Semua')}
+            className={`rounded-full border px-md py-xs text-caption-sm font-medium transition-colors ${filterTipe === t ? 'border-ink bg-ink text-white' : 'border-hairline text-muted'}`}
+          >
+            {t}
+          </button>
+        ))}
+        <span className="mx-xs h-5 w-px bg-hairline" />
+        <button
+          onClick={() => setOnlyUpcoming((v) => !v)}
+          className={`rounded-full border px-md py-xs text-caption-sm font-medium transition-colors ${onlyUpcoming ? 'border-primary bg-primary-disabled text-primary-error' : 'border-hairline text-muted'}`}
+        >
+          Akan Datang
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 gap-base sm:grid-cols-2 desktop:grid-cols-3">
         {events.map((e) => {

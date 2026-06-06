@@ -69,20 +69,109 @@ export default function Activation() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
-      <header className="flex h-16 items-center px-base desktop:h-20 desktop:px-lg">
-        <Logo />
-      </header>
+    <div className="min-h-screen bg-canvas">
+      <div className="grid min-h-screen grid-cols-1 desktop:grid-cols-2">
+        {/* Left — hero panel with background photo */}
+        <div className="relative hidden overflow-hidden bg-ink desktop:block">
+          <img
+            src="/background.jpg"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="eager"
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.85) 100%)',
+            }}
+          />
+          <div className="relative flex h-full flex-col justify-between p-section text-white">
+            <div className="flex items-center gap-sm">
+              <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-primary text-white">
+                <svg viewBox="0 0 32 32" className="h-6 w-6" fill="currentColor" aria-hidden="true">
+                  <path d="M16 6 L26 14 V26 H20 V19 H12 V26 H6 V14 Z" />
+                </svg>
+              </span>
+              <div className="leading-none">
+                <p className="text-title-md text-white">KSTP Cakung</p>
+                <p className="text-body-sm text-white/75">Layanan Warga Digital</p>
+              </div>
+            </div>
 
-      <div className="flex flex-1 items-center justify-center px-base py-xl">
-        <div className="w-full max-w-md">
-          {/* Progress */}
-          <div className="mb-xl flex items-center justify-center gap-xs">
-            {(['code', 'confirm', 'password'] as Step[]).map((s, i) => {
-              const order = ['code', 'confirm', 'password']
-              const done = order.indexOf(step) > i
-              const active = step === s
-              return (
+            <div className="max-w-md">
+              <h1 className="text-display-xl text-white" style={{ fontSize: '40px', lineHeight: 1.15 }}>
+                Aktivasi akun warga Anda.
+              </h1>
+              <p className="mt-base text-body-md text-white/85">
+                Masukkan kode undangan yang Anda terima dari pengelola.
+                Konfirmasi data Anda, lalu buat password untuk masuk ke
+                aplikasi layanan warga.
+              </p>
+
+              <ol className="mt-lg space-y-md">
+                {[
+                  { n: '1', t: 'Masukkan kode undangan', d: 'KSTP-XXXXXX dari pengelola' },
+                  { n: '2', t: 'Konfirmasi data Anda', d: 'Nama, unit, dan no HP' },
+                  { n: '3', t: 'Buat password', d: 'Untuk login berikutnya' },
+                ].map((s) => (
+                  <li key={s.n} className="flex items-start gap-md">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-badge font-semibold backdrop-blur">
+                      {s.n}
+                    </span>
+                    <div>
+                      <p className="text-title-sm text-white">{s.t}</p>
+                      <p className="text-body-sm text-white/75">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className="flex items-center gap-sm text-caption-sm text-white/70">
+              <ShieldCheck className="h-4 w-4" />
+              <span>Tidak ada registrasi bebas. Akun dibuat oleh pengelola.</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right — form */}
+        <div className="flex flex-col">
+          <div className="relative h-44 overflow-hidden desktop:hidden">
+            <img
+              src="/background.jpg"
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="eager"
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.65) 100%)',
+              }}
+            />
+            <div className="relative flex h-full flex-col justify-between p-base text-white">
+              <Logo compact />
+              <div>
+                <p className="text-display-sm">Aktivasi Akun</p>
+                <p className="text-body-sm text-white/85">Pakai kode undangan dari pengelola</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-1 items-center justify-center px-base py-xl desktop:p-section">
+            <div className="w-full max-w-md">
+              <div className="mb-lg hidden desktop:block">
+                <Logo />
+              </div>
+              {/* Progress */}
+              <div className="mb-xl flex items-center justify-center gap-xs">
+                {(['code', 'confirm', 'password'] as Step[]).map((s, i) => {
+                  const order = ['code', 'confirm', 'password']
+                  const done = order.indexOf(step) > i
+                  const active = step === s
+                  return (
                 <div key={s} className="flex items-center gap-xs">
                   <div
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-badge font-semibold transition-colors ${
@@ -243,6 +332,8 @@ export default function Activation() {
               </button>
             </form>
           )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

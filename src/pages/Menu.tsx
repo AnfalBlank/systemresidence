@@ -8,10 +8,10 @@ import Avatar from '@/components/ui/Avatar'
 
 const roleAllowList: Record<Role, string[]> = {
   warga: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic'],
-  pengelola: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic', '/keamanan', '/broadcast', '/warga', '/pengaturan'],
-  petugas_keuangan: ['/iuran', '/keuangan', '/pengumuman', '/verifikasi', '/pengaturan'],
+  pengelola: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic', '/keamanan', '/broadcast', '/warga', '/laporan-pembayaran', '/pengaturan'],
+  petugas_keuangan: ['/iuran', '/keuangan', '/pengumuman', '/verifikasi', '/laporan-pembayaran', '/pengaturan'],
   petugas_keamanan: ['/panic', '/keamanan', '/tamu', '/pengumuman'],
-  super_admin: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic', '/broadcast', '/keamanan', '/warga', '/verifikasi', '/pengaturan'],
+  super_admin: ['/feed', '/pengumuman', '/berita-duka', '/iuran', '/keuangan', '/crowdfunding', '/bank-sampah', '/marketplace', '/skill', '/umkm', '/komunitas', '/event', '/booking', '/voting', '/pengaduan', '/tamu', '/panic', '/broadcast', '/keamanan', '/warga', '/verifikasi', '/laporan-pembayaran', '/pengaturan'],
 }
 
 export default function Menu() {

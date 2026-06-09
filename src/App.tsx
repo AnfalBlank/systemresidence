@@ -28,6 +28,7 @@ import Broadcast from '@/pages/Broadcast'
 import SecurityDashboard from '@/pages/SecurityDashboard'
 import ResidentManagement from '@/pages/ResidentManagement'
 import PaymentVerification from '@/pages/PaymentVerification'
+import PaymentReport from '@/pages/PaymentReport'
 import Settings from '@/pages/Settings'
 import NotFound from '@/pages/NotFound'
 
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="/broadcast" element={<Broadcast />} />
         <Route path="/warga" element={<ResidentManagement />} />
         <Route path="/verifikasi" element={<PaymentVerification />} />
+        <Route path="/laporan-pembayaran" element={<PaymentReport />} />
         <Route path="/pengaturan" element={<Settings />} />
         <Route path="/profil" element={<Profile />} />
         <Route path="/menu" element={<Menu />} />

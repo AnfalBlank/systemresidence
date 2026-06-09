@@ -28,9 +28,11 @@ router.get(
   requireRole('super_admin', 'pengelola', 'petugas_keuangan'),
   asyncHandler(async (_req, res) => {
     const result = await db.execute(`
-      SELECT d.*, r.nama as resident_nama, r.blok, r.lantai, r.nomor_unit
+      SELECT d.*, r.nama as resident_nama, r.blok, r.lantai, r.nomor_unit,
+             v.nama as verifier_nama
       FROM dues d
       JOIN residents r ON r.id = d.resident_id
+      LEFT JOIN residents v ON v.id = d.verified_by
       ORDER BY d.status = 'Menunggu Verifikasi' DESC, d.jatuh_tempo DESC
     `)
     res.json(
@@ -38,6 +40,11 @@ router.get(
         ...mapDues(row),
         residentName: String(row.resident_nama),
         residentUnit: `${row.blok}-${row.lantai}-${row.nomor_unit}`,
+        blok: String(row.blok),
+        paymentMethod: row.payment_method ? String(row.payment_method) : null,
+        paidAt: row.paid_at ? Number(row.paid_at) : null,
+        verifiedAt: row.verified_at ? Number(row.verified_at) : null,
+        verifiedBy: row.verifier_nama ? String(row.verifier_nama) : null,
       }))
     )
   })
